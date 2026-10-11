@@ -284,66 +284,6 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-white/10 gap-2 overflow-x-auto">
-        <button
-          onClick={() => {
-            setActiveTab('analytics')
-            navigate('/admin/analytics')
-          }}
-          className={`pb-3.5 px-4 text-xs font-bold tracking-[0.5px] border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'analytics'
-              ? 'border-[#A01D26] text-slate-900 dark:text-white'
-              : 'border-transparent text-slate-500 dark:text-[#D9D9D9]/60 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          Analytics & Model Metrics
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('records')
-            navigate('/admin/postal-records')
-          }}
-          className={`pb-3.5 px-4 text-xs font-bold tracking-[0.5px] border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'records'
-              ? 'border-[#A01D26] text-slate-900 dark:text-white'
-              : 'border-transparent text-slate-500 dark:text-[#D9D9D9]/60 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Database className="w-4 h-4" />
-          Postal Directory Records
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('feedback')
-            navigate('/admin/feedback')
-          }}
-          className={`pb-3.5 px-4 text-xs font-bold tracking-[0.5px] border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'feedback'
-              ? 'border-[#A01D26] text-slate-900 dark:text-white'
-              : 'border-transparent text-slate-500 dark:text-[#D9D9D9]/60 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <FileCheck className="w-4 h-4" />
-          Feedback Queue ({feedbackList.filter((f) => f.status === 'pending').length})
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('dataset')
-            navigate('/admin/dataset-management')
-          }}
-          className={`pb-3.5 px-4 text-xs font-bold tracking-[0.5px] border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'dataset'
-              ? 'border-[#A01D26] text-slate-900 dark:text-white'
-              : 'border-transparent text-slate-500 dark:text-[#D9D9D9]/60 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Activity className="w-4 h-4" />
-          Dataset & Imports
-        </button>
-      </div>
-
       {/* Tab 1: Analytics */}
       {activeTab === 'analytics' && analytics && (
         <div className="space-y-6">

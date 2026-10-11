@@ -41,7 +41,6 @@ export const AdminLayout: React.FC = () => {
 
   const adminNavLinks = [
     { to: '/admin', label: 'Console Overview', icon: ShieldCheck, exact: true },
-    { to: '/admin/analytics', label: 'Analytics & Models', icon: BarChart3 },
     { to: '/admin/postal-records', label: 'Postal Records', icon: Database },
     { to: '/admin/feedback', label: 'Feedback Queue', icon: FileCheck },
     { to: '/admin/dataset-management', label: 'Dataset Imports', icon: Activity },
