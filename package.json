@@ -1,0 +1,14 @@
+{
+  "name": "postal-iq-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "POSTALIQ — Intelligent Indian PIN Code & Postal Intelligence Platform",
+  "scripts": {
+    "build": "npm --prefix frontend run build",
+    "test": "npm --prefix frontend test",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.149.0"
+  }
+}
