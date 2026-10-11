@@ -8,3 +8,8 @@ command = "npm run build"
 directory = "./dist"
 html_handling = "auto-trailing-slash"
 not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "postaliq-production"
+database_id = "36d26639-36f2-4f75-a5d7-0309a13aae9b"

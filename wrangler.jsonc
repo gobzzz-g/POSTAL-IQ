@@ -1,15 +1,22 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "postal-iq",
-  "main": "worker/index.ts",
-  "compatibility_date": "2024-09-23",
-  "build": {
-    "command": "npm --prefix frontend install && npm --prefix frontend run build"
-  },
-  "assets": {
-    "directory": "./frontend/dist",
-    "binding": "ASSETS",
-    "html_handling": "auto-trailing-slash",
-    "not_found_handling": "single-page-application"
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "postal-iq",
+	"main": "worker/index.ts",
+	"compatibility_date": "2024-09-23",
+	"build": {
+		"command": "npm --prefix frontend install && npm --prefix frontend run build"
+	},
+	"assets": {
+		"directory": "./frontend/dist",
+		"binding": "ASSETS",
+		"html_handling": "auto-trailing-slash",
+		"not_found_handling": "single-page-application"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "postaliq-production",
+			"database_id": "36d26639-36f2-4f75-a5d7-0309a13aae9b"
+		}
+	]
 }

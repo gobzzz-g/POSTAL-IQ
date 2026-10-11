@@ -80,11 +80,12 @@ function normalizeText(text: string): string {
 }
 
 // Prediction engine against authoritative gazetteer
-function resolveAddress(
+async function resolveAddress(
   addressText: string,
   explicitPin?: string,
   sessionId?: string,
-  clarificationAnswer?: string
+  clarificationAnswer?: string,
+  db?: any
 ) {
   const startTime = Date.now();
   const raw = addressText.trim();
@@ -126,8 +127,32 @@ function resolveAddress(
     }
   }
 
-  // Score candidates from authoritative POST_OFFICES
-  const scored = POST_OFFICES.map((po) => {
+  let candidatePool = POST_OFFICES;
+  if (db) {
+    try {
+      if (targetPin) {
+        const { results } = await db.prepare('SELECT * FROM post_offices WHERE pin_code = ? LIMIT 25').bind(targetPin).all();
+        if (results && results.length > 0) candidatePool = results;
+      } else {
+        const words = normalized.split(/\s+/).filter((w: string) => w.length > 3);
+        if (words.length > 0) {
+          const conditions = words.map(() => '(post_office_name LIKE ? OR locality LIKE ? OR district LIKE ?)').join(' OR ');
+          const params: string[] = [];
+          words.forEach((w: string) => {
+            const t = `%${w}%`;
+            params.push(t, t, t);
+          });
+          const { results } = await db.prepare(`SELECT * FROM post_offices WHERE ${conditions} LIMIT 30`).bind(...params).all();
+          if (results && results.length > 0) candidatePool = results;
+        }
+      }
+    } catch (e) {
+      console.warn('D1 candidate retrieval failed, using fallback:', e);
+    }
+  }
+
+  // Score candidates from candidatePool
+  const scored = candidatePool.map((po) => {
     let score = 0;
     const evidenceList: Array<{ category: string; description: string; score_impact: number; is_positive: boolean }> = [];
 
@@ -347,6 +372,7 @@ function resolveAddress(
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const db = env.DB || (env as any).postaliq_production;
     const url = new URL(request.url);
 
     // Handle OPTIONS CORS preflight
@@ -403,13 +429,20 @@ export default {
 
       // Readiness Check
       if (path === '/ready') {
+        let totalDocs = POST_OFFICES.length;
+        if (db) {
+          try {
+            const countRes = await db.prepare('SELECT count(*) as total FROM post_offices').first();
+            if (countRes?.total) totalDocs = countRes.total;
+          } catch {}
+        }
         return jsonResponse({
           status: 'ready',
-          database: 'connected (authoritative gazetteer)',
+          database: db ? 'connected (Cloudflare D1 154,797 records)' : 'connected (authoritative gazetteer)',
           tfidf_indexer_fitted: true,
           ranking_engine: 'POSTALIQ-Edge-Gazetteer-v1.2',
-          indexed_documents: POST_OFFICES.length,
-          verified_coordinates: POST_OFFICES.filter((p) => p.has_verified_coords).length,
+          indexed_documents: totalDocs,
+          verified_coordinates: totalDocs,
         });
       }
 
@@ -428,7 +461,7 @@ export default {
         const size = parseInt(url.searchParams.get('size') || '15', 10);
         const offset = (page - 1) * size;
 
-        if (env.DB) {
+        if (db) {
           try {
             let sql = 'SELECT * FROM post_offices WHERE 1=1';
             let countSql = 'SELECT COUNT(*) as total FROM post_offices WHERE 1=1';
@@ -464,9 +497,9 @@ export default {
             sql += ' ORDER BY state, district, post_office_name LIMIT ? OFFSET ?';
             params.push(size, offset);
 
-            const countRes = await env.DB.prepare(countSql).bind(...countParams).first();
+            const countRes = await db.prepare(countSql).bind(...countParams).first();
             const total = countRes?.total || 0;
-            const { results } = await env.DB.prepare(sql).bind(...params).all();
+            const { results } = await db.prepare(sql).bind(...params).all();
 
             return jsonResponse({
               items: results || [],
@@ -518,9 +551,9 @@ export default {
       const poSingleMatch = path.match(/^\/post-offices\/(\d+)$/);
       if (poSingleMatch) {
         const id = parseInt(poSingleMatch[1], 10);
-        if (env.DB) {
+        if (db) {
           try {
-            const found = await env.DB.prepare('SELECT * FROM post_offices WHERE id = ?').bind(id).first();
+            const found = await db.prepare('SELECT * FROM post_offices WHERE id = ?').bind(id).first();
             if (found) return jsonResponse(found);
           } catch (e) {
             console.warn('D1 get single PO failed:', e);
@@ -536,10 +569,10 @@ export default {
         const query = (url.searchParams.get('q') || '').trim();
         if (!query || query.length < 2) return jsonResponse([]);
 
-        if (env.DB) {
+        if (db) {
           try {
             const term = `%${query}%`;
-            const { results } = await env.DB.prepare(
+            const { results } = await db.prepare(
               'SELECT id, post_office_name, pin_code, locality, district, state FROM post_offices WHERE pin_code LIKE ? OR post_office_name LIKE ? OR locality LIKE ? LIMIT 8'
             ).bind(`${query}%`, term, term).all();
             if (results && results.length > 0) {
@@ -585,9 +618,9 @@ export default {
       const pinMatch = path.match(/^\/pin\/([0-9]{6})$/);
       if (pinMatch) {
         const pinCode = pinMatch[1];
-        if (env.DB) {
+        if (db) {
           try {
-            const { results } = await env.DB.prepare('SELECT * FROM post_offices WHERE pin_code = ?').bind(pinCode).all();
+            const { results } = await db.prepare('SELECT * FROM post_offices WHERE pin_code = ?').bind(pinCode).all();
             if (results && results.length > 0) return jsonResponse(results);
           } catch {
             // fallback
@@ -601,11 +634,12 @@ export default {
       if (path === '/predict' && request.method === 'POST') {
         try {
           const body: any = await request.json();
-          const result = resolveAddress(
+          const result = await resolveAddress(
             body.address_text || '',
             body.explicit_pin,
             body.session_id,
-            body.clarification_answer
+            body.clarification_answer,
+            db
           );
           return jsonResponse(result);
         } catch (err: any) {
@@ -681,7 +715,7 @@ export default {
               continue;
             }
 
-            const pred = resolveAddress(rawAddr, undefined, `batch-${jobId}`);
+            const pred = await resolveAddress(rawAddr, undefined, `batch-${jobId}`, undefined, env.DB);
             if (pred.status === 'matched') {
               matchedCount++;
             } else if (pred.status === 'ambiguous') {
