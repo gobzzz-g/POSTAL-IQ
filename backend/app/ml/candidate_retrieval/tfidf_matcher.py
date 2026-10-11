@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from typing import List, Tuple, Dict, Any, Optional
@@ -37,7 +38,27 @@ class TfidfPostalMatcher:
             score = float(scores[idx])
             if score >= min_score:
                 results.append((self.doc_ids[idx], score))
-                
         return results
+
+    def save(self, filepath: str):
+        if not self.is_fitted:
+            return
+        import joblib
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        joblib.dump({"vectorizer": self.vectorizer, "tfidf_matrix": self.tfidf_matrix, "doc_ids": self.doc_ids}, filepath)
+
+    def load(self, filepath: str) -> bool:
+        if not os.path.exists(filepath):
+            return False
+        import joblib
+        try:
+            data = joblib.load(filepath)
+            self.vectorizer = data["vectorizer"]
+            self.tfidf_matrix = data["tfidf_matrix"]
+            self.doc_ids = data["doc_ids"]
+            self.is_fitted = True
+            return True
+        except Exception:
+            return False
 
 tfidf_matcher = TfidfPostalMatcher()

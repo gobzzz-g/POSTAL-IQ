@@ -10,3 +10,19 @@ directory = "./frontend/dist"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "single-page-application"
+
+# -------------------------------------------------------------
+# CLOUDFLARE DEPLOYMENT ARCHITECTURE CONFIGURATION
+# -------------------------------------------------------------
+# Option A: Connect Edge Worker to Hosted FastAPI Backend (Default Production)
+# [vars]
+# BACKEND_URL = "https://api.postaliq.in"
+
+# Option B: Serverless Cloudflare D1 Edge SQL Database (154,797 records)
+# To provision: wrangler d1 create postaliq-production
+# To import: wrangler d1 execute postaliq-production --file=./migrations/init_d1.sql
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "postaliq-production"
+# database_id = "<your-d1-database-uuid>"
+

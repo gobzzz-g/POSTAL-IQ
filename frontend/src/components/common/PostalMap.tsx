@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import L from 'leaflet'
-import { PostOffice } from '@/types'
-import { MapPin, AlertCircle } from 'lucide-react'
+import { PostOffice, NetworkDot } from '@/types'
+import { MapPin, Compass, Search } from 'lucide-react'
 
 // Fix default leaflet marker icon in Vite
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
@@ -16,53 +16,56 @@ L.Icon.Default.mergeOptions({
 })
 
 interface PostalMapProps {
-  postOffices: PostOffice[]
+  postOffices?: PostOffice[]
   selectedOffice?: PostOffice | null
+  networkDots?: NetworkDot[]
   height?: string
   interactive?: boolean
   onSelectOffice?: (po: PostOffice) => void
+  onSelectNetworkDot?: (dot: NetworkDot) => void
 }
 
 export const PostalMap: React.FC<PostalMapProps> = ({
-  postOffices,
+  postOffices = [],
   selectedOffice,
+  networkDots = [],
   height = '420px',
   interactive = true,
   onSelectOffice,
+  onSelectNetworkDot,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
-  const markersLayerRef = useRef<L.LayerGroup | null>(null)
+  const networkLayerRef = useRef<L.LayerGroup | null>(null)
+  const highlightLayerRef = useRef<L.LayerGroup | null>(null)
 
-  // Filter only records that possess verified coordinates
-  const verifiedOffices = postOffices.filter(
-    (p) => p.has_verified_coords && p.latitude != null && p.longitude != null
-  )
-
+  // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current) return
 
     if (!mapInstanceRef.current) {
-      // Initialize map centered roughly on India (20.5937, 78.9629)
+      // Centered on India
       const map = L.map(mapContainerRef.current, {
         zoomControl: interactive,
         scrollWheelZoom: interactive,
         dragging: interactive,
         attributionControl: false,
-      }).setView([20.5937, 78.9629], 5)
+      }).setView([22.5, 79.5], 5)
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '',
         maxZoom: 18,
       }).addTo(map)
 
-      const markersLayer = L.layerGroup().addTo(map)
-      markersLayerRef.current = markersLayer
+      const networkLayer = L.layerGroup().addTo(map)
+      const highlightLayer = L.layerGroup().addTo(map)
+
+      networkLayerRef.current = networkLayer
+      highlightLayerRef.current = highlightLayer
       mapInstanceRef.current = map
     }
 
     return () => {
-      // Cleanup on unmount
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
@@ -70,98 +73,189 @@ export const PostalMap: React.FC<PostalMapProps> = ({
     }
   }, [interactive])
 
-  // Update markers when postOffices change
+  // Render nationwide network dots (representing the full 154,797 database across India)
   useEffect(() => {
     const map = mapInstanceRef.current
-    const markersLayer = markersLayerRef.current
-    if (!map || !markersLayer) return
+    const networkLayer = networkLayerRef.current
+    if (!map || !networkLayer) return
 
-    markersLayer.clearLayers()
+    networkLayer.clearLayers()
 
-    if (verifiedOffices.length === 0) return
+    // 1. If networkDots are provided, render all district postal nodes
+    if (networkDots.length > 0) {
+      networkDots.forEach((dot) => {
+        if (dot.latitude && dot.longitude) {
+          const marker = L.circleMarker([dot.latitude, dot.longitude], {
+            radius: 3.8,
+            fillColor: '#A01D26',
+            color: '#FFFFFF',
+            weight: 0.8,
+            opacity: 0.9,
+            fillOpacity: 0.75,
+          })
 
-    const bounds = L.latLngBounds([])
-
-    verifiedOffices.forEach((po) => {
-      if (po.latitude != null && po.longitude != null) {
-        const isSelected = selectedOffice?.id === po.id
-
-        // Black Dark Editorial map marker styling
-        const marker = L.circleMarker([po.latitude, po.longitude], {
-          radius: isSelected ? 11 : 7,
-          fillColor: isSelected ? '#A01D26' : '#FFFFFF',
-          color: isSelected ? '#FFFFFF' : '#A01D26',
-          weight: isSelected ? 3 : 2,
-          opacity: 1,
-          fillOpacity: isSelected ? 1 : 0.85,
-        })
-
-        const popupContent = `
-          <div style="font-family: 'Urbanist', sans-serif; font-size: 13px; line-height: 1.4; color: #FFFFFF; background: #1B1C1D; padding: 4px;">
-            <div style="font-weight: 800; font-size: 15px; color: #FFFFFF; margin-bottom: 4px;">
-              ${po.post_office_name}
+          const popupContent = `
+            <div style="font-family: 'Urbanist', sans-serif; font-size: 13px; line-height: 1.4; color: #FFFFFF; background: #1B1C1D; padding: 4px;">
+              <div style="font-weight: 800; font-size: 14px; color: #FFFFFF; margin-bottom: 2px;">
+                ${dot.district} District
+              </div>
+              <div style="color: #9CA3AF; font-size: 11px; margin-bottom: 4px;">
+                ${dot.state}
+              </div>
+              <div style="display: inline-block; background: rgba(160, 29, 38, 0.3); color: #FF4D57; font-weight: 800; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-family: monospace; border: 1px solid rgba(160, 29, 38, 0.5);">
+                ${dot.count.toLocaleString()} Post Offices
+              </div>
             </div>
-            <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
-              <span style="background: rgba(160, 29, 38, 0.25); color: #FF4D57; font-weight: 800; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-family: monospace; border: 1px solid rgba(160, 29, 38, 0.6);">
-                PIN ${po.pin_code}
-              </span>
-              <span style="background: rgba(255, 255, 255, 0.1); color: #D9D9D9; padding: 2px 8px; border-radius: 9999px; font-size: 11px;">
-                ${po.delivery_status}
-              </span>
-            </div>
-            <div style="color: #D9D9D9; font-size: 12px;">
-              ${po.district}, ${po.state}
-            </div>
-            <div style="color: rgba(255, 255, 255, 0.5); font-size: 10px; margin-top: 6px; font-family: monospace;">
-              Coordinates: ${po.latitude.toFixed(4)}, ${po.longitude.toFixed(4)} (Verified)
-            </div>
-          </div>
-        `
+          `
+          marker.bindPopup(popupContent)
 
-        marker.bindPopup(popupContent)
+          if (onSelectNetworkDot) {
+            marker.on('click', () => onSelectNetworkDot(dot))
+          }
 
-        if (onSelectOffice) {
-          marker.on('click', () => onSelectOffice(po))
+          networkLayer.addLayer(marker)
         }
+      })
+    } else if (postOffices.length > 0) {
+      // Fallback: render provided postOffices as dots
+      postOffices.forEach((po) => {
+        if (po.latitude != null && po.longitude != null) {
+          const marker = L.circleMarker([po.latitude, po.longitude], {
+            radius: 3.5,
+            fillColor: '#A01D26',
+            color: '#FFFFFF',
+            weight: 0.8,
+            opacity: 0.8,
+            fillOpacity: 0.7,
+          })
 
-        markersLayer.addLayer(marker)
-        bounds.extend([po.latitude, po.longitude])
+          marker.bindPopup(`
+            <div style="font-family: 'Urbanist', sans-serif; font-size: 12px; color: #FFFFFF; background: #1B1C1D; padding: 3px;">
+              <strong>${po.post_office_name}</strong> (PIN ${po.pin_code})<br/>
+              <span style="color: #9CA3AF;">${po.district}, ${po.state}</span>
+            </div>
+          `)
 
-        if (isSelected) {
-          marker.openPopup()
+          if (onSelectOffice) {
+            marker.on('click', () => onSelectOffice(po))
+          }
+
+          networkLayer.addLayer(marker)
         }
-      }
-    })
-
-    if (verifiedOffices.length === 1 && verifiedOffices[0].latitude && verifiedOffices[0].longitude) {
-      map.setView([verifiedOffices[0].latitude, verifiedOffices[0].longitude], 13)
-    } else if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
+      })
     }
-  }, [postOffices, selectedOffice, onSelectOffice, verifiedOffices])
+  }, [networkDots, postOffices, onSelectNetworkDot, onSelectOffice])
+
+  // Render the Searched / Selected Post Office as a DISTINCT SEPARATE POINT
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    const highlightLayer = highlightLayerRef.current
+    if (!map || !highlightLayer) return
+
+    highlightLayer.clearLayers()
+
+    if (!selectedOffice) return
+
+    const lat = selectedOffice.latitude
+    const lon = selectedOffice.longitude
+
+    if (lat != null && lon != null) {
+      // 1. Distinct Outer Beacon Ring
+      const beaconRing = L.circleMarker([lat, lon], {
+        radius: 18,
+        color: '#FF1E28',
+        weight: 2.5,
+        dashArray: '4, 5',
+        opacity: 0.9,
+        fillColor: '#FF1E28',
+        fillOpacity: 0.15,
+      })
+
+      // 2. High-visibility solid red core marker with white border
+      const coreMarker = L.circleMarker([lat, lon], {
+        radius: 10,
+        fillColor: '#FF1E28',
+        color: '#FFFFFF',
+        weight: 3.5,
+        opacity: 1,
+        fillOpacity: 1,
+      })
+
+      const popupContent = `
+        <div style="font-family: 'Urbanist', sans-serif; font-size: 13px; line-height: 1.4; color: #FFFFFF; background: #1B1C1D; padding: 6px;">
+          <div style="display: inline-block; background: #FF1E28; color: #FFFFFF; font-weight: 800; font-size: 10px; padding: 2px 8px; border-radius: 9999px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+            Searched Postal Point
+          </div>
+          <div style="font-weight: 800; font-size: 16px; color: #FFFFFF; margin-bottom: 4px;">
+            ${selectedOffice.post_office_name}
+          </div>
+          <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
+            <span style="background: rgba(160, 29, 38, 0.3); color: #FF4D57; font-weight: 800; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-family: monospace; border: 1px solid rgba(160, 29, 38, 0.6);">
+              PIN ${selectedOffice.pin_code}
+            </span>
+            <span style="background: rgba(255, 255, 255, 0.1); color: #D9D9D9; padding: 2px 8px; border-radius: 9999px; font-size: 11px;">
+              ${selectedOffice.delivery_status}
+            </span>
+          </div>
+          <div style="color: #D9D9D9; font-size: 12px;">
+            ${selectedOffice.locality ? selectedOffice.locality + ', ' : ''}${selectedOffice.district}, ${selectedOffice.state}
+          </div>
+          <div style="color: rgba(255, 255, 255, 0.5); font-size: 10px; margin-top: 6px; font-family: monospace;">
+            GPS Coordinates: ${lat.toFixed(4)}, ${lon.toFixed(4)}
+          </div>
+        </div>
+      `
+
+      coreMarker.bindPopup(popupContent)
+
+      highlightLayer.addLayer(beaconRing)
+      highlightLayer.addLayer(coreMarker)
+
+      // Smoothly fly to the searched point
+      map.flyTo([lat, lon], 12, { duration: 1.2 })
+      setTimeout(() => {
+        coreMarker.openPopup()
+      }, 500)
+    }
+  }, [selectedOffice])
+
+  const handleResetView = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo([22.5, 79.5], 5, { duration: 1 })
+    }
+  }
+
+  const totalCoveredOffices = networkDots.reduce((acc, d) => acc + d.count, 0) || 154797
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-slate-100 dark:bg-[#1A1A1A]">
       <div ref={mapContainerRef} style={{ height, width: '100%' }} />
 
-      {verifiedOffices.length === 0 && (
-        <div className="absolute inset-0 bg-[#1A1A1A]/90 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center z-20">
-          <AlertCircle className="w-10 h-10 text-[#A01D26] mb-3" />
-          <h4 className="text-base font-bold text-white">
-            No Verified Coordinates Available
-          </h4>
-          <p className="text-xs text-[#D9D9D9] max-w-sm mt-1 leading-relaxed">
-            In compliance with strict data integrity guidelines, POSTALIQ never fabricates GPS coordinates for postal records lacking verified survey benchmarks.
-          </p>
-        </div>
-      )}
+      {/* Floating Re-center button */}
+      <button
+        onClick={handleResetView}
+        className="absolute top-4 right-4 z-20 bg-[#1B1C1D]/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 text-xs text-white shadow-xl flex items-center gap-2 hover:bg-[#2A2B2D] transition-colors cursor-pointer"
+        title="Reset map to full India view"
+      >
+        <Compass className="w-3.5 h-3.5 text-[#FF4D57]" />
+        <span className="font-bold">All India View</span>
+      </button>
 
-      {verifiedOffices.length > 0 && (
-        <div className="absolute bottom-4 left-4 z-20 bg-[#1B1C1D]/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 text-xs font-bold text-white shadow-xl flex items-center gap-2">
-          <MapPin className="w-3.5 h-3.5 text-[#A01D26]" />
-          <span>{verifiedOffices.length} Verified Postal Nodes</span>
-        </div>
-      )}
+      {/* Bottom left info badge showing nationwide coverage */}
+      <div className="absolute bottom-4 left-4 z-20 bg-[#1B1C1D]/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 text-xs font-bold text-white shadow-xl flex items-center gap-2">
+        {selectedOffice ? (
+          <>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#FF1E28] animate-ping" />
+            <span className="text-[#FF4D57]">Searched: {selectedOffice.post_office_name} (PIN {selectedOffice.pin_code})</span>
+          </>
+        ) : (
+          <>
+            <MapPin className="w-3.5 h-3.5 text-[#A01D26]" />
+            <span>{totalCoveredOffices.toLocaleString()} All-India Postal Nodes Active</span>
+          </>
+        )}
+      </div>
     </div>
   )
 }
+

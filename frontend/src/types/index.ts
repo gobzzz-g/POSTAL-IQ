@@ -80,6 +80,10 @@ export interface PostOffice {
   division?: string | null
   region?: string | null
   circle?: string | null
+  taluk?: string | null
+  telephone?: string | null
+  related_suboffice?: string | null
+  related_headoffice?: string | null
   latitude?: number | null
   longitude?: number | null
   has_verified_coords: boolean
@@ -168,6 +172,11 @@ export interface AnalyticsResponse {
   avg_confidence_score: number
   confidence_distribution: Record<string, number>
   dataset_stats: {
+    source?: string
+    import_date?: string | null
+    last_successful_update?: string | null
+    number_of_records_imported?: number
+    rejected_rows?: number
     total_post_offices: number
     total_pin_codes: number
     total_districts: number
@@ -178,4 +187,12 @@ export interface AnalyticsResponse {
   }
   model_evaluations: ModelMetric[]
   recent_feedback_count: number
+}
+
+export interface NetworkDot {
+  district: string
+  state: string
+  latitude: number
+  longitude: number
+  count: number
 }

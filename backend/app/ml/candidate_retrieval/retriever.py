@@ -1,9 +1,11 @@
+import re
 from typing import List, Dict, Any, Optional, Set
 from sqlalchemy.orm import Session
 from rapidfuzz import fuzz
 from backend.app.models.post_office import PostOffice
 from backend.app.models.locality_alias import LocalityAlias
 from backend.app.ml.candidate_retrieval.tfidf_matcher import tfidf_matcher
+from backend.app.ml.entity_extraction.gazetteer import are_districts_compatible, are_states_compatible
 
 POSTAL_STOPWORDS = {
     "post", "office", "head", "sub", "branch", "road", "street", "lane",
@@ -40,14 +42,41 @@ class CandidateRetriever:
                 }
 
         # Tier 2: Locality / Alias exact & substring matches
-        # Search aliases for extracted locality or meaningful query tokens
-        query_tokens = [t for t in normalized_query.split() if len(t) >= 4 and t not in POSTAL_STOPWORDS]
-        search_terms = set(query_tokens)
+        # Build search terms in strict priority order: locality first, subdivisions second, tokens third
+        ordered_terms: List[str] = []
         if extracted_locality:
-            search_terms.add(extracted_locality.lower())
-            search_terms.update([t for t in extracted_locality.lower().split() if len(t) >= 4 and t not in POSTAL_STOPWORDS])
+            ordered_terms.append(extracted_locality.lower())
+            for t in extracted_locality.lower().split():
+                if len(t) >= 4 and t not in POSTAL_STOPWORDS and t not in ordered_terms:
+                    ordered_terms.append(t)
 
-        for term in search_terms:
+        # Subdivisions (e.g., sector 16, block 4, phase 2)
+        subdivision_phrases = re.findall(r'\b(?:sector|phase|block|stage|pocket|ward)\s+[0-9a-zA-Z]+\b', normalized_query)
+        for sp in subdivision_phrases:
+            if sp.lower() not in ordered_terms:
+                ordered_terms.append(sp.lower())
+
+        if "general post office" in normalized_query or "gpo" in normalized_query:
+            ordered_terms.extend(["gpo", "g.p.o"])
+        if "head post office" in normalized_query or "hpo" in normalized_query:
+            ordered_terms.extend(["h.o", "hpo"])
+        if "sub post office" in normalized_query:
+            ordered_terms.append("s.o")
+
+        # Generic query tokens (excluding state and district names to prevent saturating candidate limits)
+        geo_tokens = set()
+        if extracted_state:
+            geo_tokens.update(extracted_state.lower().split())
+        if extracted_district:
+            geo_tokens.update(extracted_district.lower().split())
+        if extracted_city:
+            geo_tokens.update(extracted_city.lower().split())
+
+        for t in normalized_query.split():
+            if len(t) >= 4 and t not in POSTAL_STOPWORDS and t not in geo_tokens and t not in ordered_terms:
+                ordered_terms.append(t)
+
+        for term in ordered_terms:
             alias_matches = db.query(LocalityAlias).filter(
                 LocalityAlias.alias_name.ilike(f"%{term}%")
             ).all()
@@ -62,10 +91,13 @@ class CandidateRetriever:
                         }
 
             # Direct PostOffice locality or post_office_name match
-            loc_matches = db.query(PostOffice).filter(
+            po_query = db.query(PostOffice).filter(
                 (PostOffice.locality.ilike(f"%{term}%")) |
                 (PostOffice.post_office_name.ilike(f"%{term}%"))
-            ).limit(10).all()
+            )
+            if extracted_state:
+                po_query = po_query.filter(PostOffice.state.ilike(f"%{extracted_state}%"))
+            loc_matches = po_query.limit(20).all()
             for rec in loc_matches:
                 if rec.id not in candidate_map:
                     candidate_map[rec.id] = {
@@ -75,8 +107,14 @@ class CandidateRetriever:
                     }
 
         # Tier 3: TF-IDF vector retrieval
+        if not tfidf_matcher.is_fitted:
+            import os
+            from backend.app.core.config import settings
+            artifact_path = os.path.join(settings.MODEL_ARTIFACTS_DIR, "tfidf_indexer.joblib")
+            tfidf_matcher.load(artifact_path)
+
         if tfidf_matcher.is_fitted:
-            tfidf_candidates = tfidf_matcher.find_similar(normalized_query, top_k=20, min_score=0.12)
+            tfidf_candidates = tfidf_matcher.find_similar(normalized_query, top_k=20, min_score=0.12) or []
             doc_ids = [cid for cid, _ in tfidf_candidates]
             if doc_ids:
                 tfidf_records = db.query(PostOffice).filter(PostOffice.id.in_(doc_ids)).all()
@@ -133,20 +171,16 @@ class CandidateRetriever:
             
             # Explicit state constraint check
             if extracted_state:
-                rec_state_lower = (rec.state or "").lower()
-                req_state_lower = extracted_state.lower()
-                if req_state_lower != rec_state_lower and req_state_lower not in rec_state_lower:
+                if not are_states_compatible(extracted_state, rec.state):
                     continue  # Drop candidate from completely different state!
 
             # Explicit district constraint check
             if extracted_district:
-                rec_dist_lower = (rec.district or "").lower()
-                req_dist_lower = extracted_district.lower()
-                if req_dist_lower != rec_dist_lower and req_dist_lower not in rec_dist_lower and rec_dist_lower not in req_dist_lower:
+                if not are_districts_compatible(extracted_district, rec.district):
                     continue  # Drop candidate from completely different district!
 
             filtered_candidates.append(item)
 
-        return filtered_candidates[:top_k * 2]
+        return filtered_candidates[:max(top_k * 4, 50)]
 
 candidate_retriever = CandidateRetriever()

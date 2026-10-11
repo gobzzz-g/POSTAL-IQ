@@ -17,6 +17,11 @@ class PostOffice(Base):
     region = Column(String(100), nullable=True)
     circle = Column(String(100), nullable=True)
     
+    taluk = Column(String(100), nullable=True)
+    telephone = Column(String(50), nullable=True)
+    related_suboffice = Column(String(150), nullable=True)
+    related_headoffice = Column(String(150), nullable=True)
+    
     # Coordinates (strictly verified only)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)

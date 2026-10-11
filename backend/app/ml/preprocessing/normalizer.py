@@ -15,7 +15,16 @@ DEFAULT_POSTAL_VOCAB = [
     "gandhipuram", "coimbatore", "connaught", "daryaganj", "shakarpur",
     "hauz", "khas", "koramangala", "kormangala", "indiranagar", "whitefield",
     "gachibowli", "hinjewadi", "bandra", "andheri", "patna", "bengaluru",
-    "chennai", "mumbai", "hyderabad", "delhi", "gurugram", "noida", "kolkata"
+    "bangalore", "chennai", "madras", "mumbai", "bombay", "hyderabad", "delhi",
+    "gurugram", "gurgaon", "noida", "kolkata", "calcutta", "pune", "ahmedabad",
+    "jaipur", "lucknow", "kanpur", "nagpur", "indore", "thane", "bhopal",
+    "visakhapatnam", "vadodara", "ghaziabad", "ludhiana", "agra", "nashik",
+    "faridabad", "meerut", "rajkot", "varanasi", "srinagar", "amritsar",
+    "chandigarh", "mysore", "mysuru", "jalandhar", "bhubaneswar", "salem",
+    "thiruvananthapuram", "kochi", "cochin", "dehradun", "karnataka", "maharashtra",
+    "tamil nadu", "gujarat", "rajasthan", "uttar pradesh", "bihar", "west bengal",
+    "telangana", "andhra pradesh", "kerala", "madhya pradesh", "punjab", "haryana",
+    "odisha", "assam", "jharkhand", "uttarakhand", "chhattisgarh", "himachal pradesh"
 ]
 
 class AddressNormalizer:

@@ -13,6 +13,7 @@ def search_postal_records(
     state: Optional[str] = Query(None, description="State filter"),
     district: Optional[str] = Query(None, description="District filter"),
     delivery_status: Optional[str] = Query(None, description="Delivery or Non-Delivery"),
+    has_verified_coords: Optional[bool] = Query(None, description="Filter only records with verified GPS coordinates"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
@@ -23,6 +24,7 @@ def search_postal_records(
         state=state,
         district=district,
         delivery_status=delivery_status,
+        has_verified_coords=has_verified_coords,
         page=page,
         size=size
     )

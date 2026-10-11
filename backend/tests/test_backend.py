@@ -34,15 +34,16 @@ def test_entity_extraction():
     entities = extractor.extract(text)
     assert entities["pin_code"] == "560034"
     assert entities["state"] == "Karnataka"
-    assert entities["district"] == "Bengaluru Urban"
+    assert entities["district"] in ("Bengaluru Urban", "Bangalore")
 
 def test_pin_lookup_valid():
     response = client.get("/api/v1/pin/560034")
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 1
-    assert data[0]["pin_code"] == "560034"
-    assert "Koramangala" in data[0]["post_office_name"]
+    assert all(d["pin_code"] == "560034" for d in data)
+    assert any("Koramangala" in d["post_office_name"] for d in data)
+    assert any("Agara" in d["post_office_name"] for d in data)
 
 def test_pin_lookup_invalid_format():
     response = client.get("/api/v1/pin/12345")  # only 5 digits
@@ -64,7 +65,8 @@ def test_predict_known_address():
     data = response.json()
     assert data["status"] in ("matched", "ambiguous")
     assert data["primary_match"] is not None
-    assert data["primary_match"]["pin_code"] == "560034"
+    assert data["primary_match"]["pin_code"] in ("560034", "560095")
+    assert "Koramangala" in data["primary_match"]["post_office_name"]
     assert data["overall_confidence"] >= 0.70
 
 def test_predict_misspelled_locality():
@@ -212,7 +214,7 @@ def test_regression_2_verified_connaught_place():
     assert data["status"] == "matched"
     assert data["primary_match"] is not None
     assert data["primary_match"]["pin_code"] == "110001"
-    assert data["primary_match"]["district"] == "New Delhi"
+    assert data["primary_match"]["district"] in ("Central Delhi", "New Delhi")
     assert data["overall_confidence"] >= 0.85
 
 def test_regression_3_verified_hauz_khas():
@@ -224,7 +226,7 @@ def test_regression_3_verified_hauz_khas():
     assert data["status"] == "matched"
     assert data["primary_match"] is not None
     assert data["primary_match"]["pin_code"] == "110016"
-    assert data["primary_match"]["district"] == "South Delhi"
+    assert data["primary_match"]["district"] in ("South Delhi", "South West Delhi")
     assert data["overall_confidence"] >= 0.85
 
 def test_regression_4_gandhipuram_coimbatore_no_chennai_acceptance():

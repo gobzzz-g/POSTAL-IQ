@@ -1,4 +1,4 @@
-from typing import Set, Dict, List, Tuple
+from typing import Set, Dict, List, Tuple, Optional
 
 # Authoritative list of Indian States and Union Territories
 INDIAN_STATES: Dict[str, str] = {
@@ -88,6 +88,7 @@ CITY_TO_DISTRICT: Dict[str, str] = {
     "nagpur": "Nagpur",
     "nashik": "Nashik",
     "thane": "Thane",
+    "gandhinagar": "Gandhi Nagar",
 }
 
 # Standard districts with their associated state
@@ -125,6 +126,8 @@ STANDARD_DISTRICTS: Dict[str, Tuple[str, str]] = {
     "lucknow": ("Lucknow", "Uttar Pradesh"),
     "kanpur nagar": ("Kanpur Nagar", "Uttar Pradesh"),
     "mysuru": ("Mysuru", "Karnataka"),
+    "gandhi nagar": ("Gandhi Nagar", "Gujarat"),
+    "gandhinagar": ("Gandhi Nagar", "Gujarat"),
 }
 
 # Locality anchors for geographic conflict detection
@@ -155,3 +158,67 @@ LANDMARK_INDICATORS: List[str] = [
     "beside", "facing", "in front of", "close to", "metro station",
     "bus stop", "railway station", "flyover", "circle", "junction"
 ]
+
+DISTRICT_SYNONYM_CLUSTERS: List[Set[str]] = [
+    {"bangalore", "bangalore rural", "bengaluru", "bengaluru urban", "bengaluru rural"},
+    {"gurgaon", "gurugram"},
+    {"mumbai", "mumbai suburban", "bombay", "mumbai city"},
+    {"calcutta", "kolkata"},
+    {"madras", "chennai"},
+    {"allahabad", "prayagraj"},
+    {"benares", "banaras", "varanasi"},
+    {"baroda", "vadodara"},
+    {"trivandrum", "thiruvananthapuram"},
+    {"calicut", "kozhikode"},
+    {"cochin", "kochi", "ernakulam"},
+    {"poona", "pune"},
+    {"belgaum", "belagavi"},
+    {"gulbarga", "kalaburagi"},
+    {"mysore", "mysuru"},
+    {"mangalore", "mangaluru", "dakshina kannada", "south kanara"},
+    {"hubli", "hubballi", "dharwad"},
+    {"shimoga", "shivamogga"},
+    {"bijapur", "vijayapura"},
+    {"bellary", "ballari"},
+    {"aurangabad", "chhatrapati sambhajinagar"},
+    {"faizabad", "ayodhya"},
+    {"puducherry", "pondicherry"},
+    {"cawnpore", "kanpur"},
+    {"waltair", "vizag", "visakhapatnam"},
+    {"gandhinagar", "gandhi nagar"},
+    {"east delhi", "north east delhi", "north west delhi", "north delhi", "central delhi", "new delhi", "south delhi", "south west delhi", "west delhi", "delhi"}
+]
+
+STATE_SYNONYM_CLUSTERS: List[Set[str]] = [
+    {"delhi", "new delhi", "national capital territory of delhi", "nct", "nct of delhi"},
+    {"odisha", "orissa"},
+    {"puducherry", "pondicherry"},
+    {"uttarakhand", "uttaranchal"},
+    {"jammu and kashmir", "jammu & kashmir"},
+    {"andaman and nicobar islands", "andaman & nicobar", "andaman and nicobar"},
+    {"dadra and nagar haveli and daman and diu", "dadra and nagar haveli", "daman and diu"}
+]
+
+def are_districts_compatible(dist1: Optional[str], dist2: Optional[str]) -> bool:
+    if not dist1 or not dist2:
+        return True
+    d1 = dist1.strip().lower()
+    d2 = dist2.strip().lower()
+    if d1 == d2 or d1 in d2 or d2 in d1:
+        return True
+    for cluster in DISTRICT_SYNONYM_CLUSTERS:
+        if d1 in cluster and d2 in cluster:
+            return True
+    return False
+
+def are_states_compatible(state1: Optional[str], state2: Optional[str]) -> bool:
+    if not state1 or not state2:
+        return True
+    s1 = state1.strip().lower()
+    s2 = state2.strip().lower()
+    if s1 == s2 or s1 in s2 or s2 in s1:
+        return True
+    for cluster in STATE_SYNONYM_CLUSTERS:
+        if s1 in cluster and s2 in cluster:
+            return True
+    return False

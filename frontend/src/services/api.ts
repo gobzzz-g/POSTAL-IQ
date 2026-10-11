@@ -108,6 +108,7 @@ export const api = {
     state?: string
     district?: string
     delivery_status?: string
+    has_verified_coords?: boolean
     page?: number
     size?: number
   }) => {
@@ -116,9 +117,14 @@ export const api = {
     if (params.state) searchParams.set('state', params.state)
     if (params.district) searchParams.set('district', params.district)
     if (params.delivery_status) searchParams.set('delivery_status', params.delivery_status)
+    if (params.has_verified_coords !== undefined) searchParams.set('has_verified_coords', String(params.has_verified_coords))
     if (params.page) searchParams.set('page', params.page.toString())
     if (params.size) searchParams.set('size', params.size.toString())
     return request<PostOfficeListResponse>(`/search?${searchParams.toString()}`)
+  },
+
+  getNetworkDots: () => {
+    return request<import('@/types').NetworkDot[]>('/network-dots')
   },
 
   autocomplete: (query: string) => {

@@ -22,12 +22,23 @@ def calibrate_candidate_confidence(
         # Base confidence begins from raw match score
         confidence = raw
 
+        has_geo_anchor = bool(
+            entities.get("pin_code") or
+            entities.get("district") or
+            entities.get("state") or
+            entities.get("city_or_town")
+        )
+
         # Positive multipliers for verified structural evidence
         if feats.get("pin_agreement", 0) > 0:
             confidence = min(0.99, confidence * 1.25)
-        if feats.get("locality_score", 0) >= 0.9 and feats.get("district_agreement", 0) >= 0:
-            # Strong locality match
+        if feats.get("locality_score", 0) >= 0.9 and feats.get("district_agreement", 0) >= 0 and has_geo_anchor:
+            # Strong locality match WITH geographic anchor
             confidence = min(0.99, max(confidence, 0.88 + (feats.get("locality_score", 0) * 0.10)))
+        elif feats.get("locality_score", 0) >= 0.9 and not has_geo_anchor:
+            # Locality matched but query lacks city, district, or state anchor
+            confidence = min(0.65, confidence * 0.65)
+
         if feats.get("district_agreement", 0) > 0 and feats.get("state_agreement", 0) > 0:
             confidence = min(0.99, confidence * 1.10)
 
@@ -43,9 +54,11 @@ def calibrate_candidate_confidence(
         if feats.get("locality_score", 0) < 0.2 and feats.get("district_agreement", 0) <= 0:
             confidence *= 0.10
 
-        # Ambiguity reduction for leading candidate when runner-up is neck-and-neck
-        if idx == 0 and len(ranked_candidates) > 1 and margin < 0.08 and raw < 0.85:
-            confidence = confidence * 0.75
+        # Ambiguity reduction for leading candidate when runner-up is neck-and-neck with a different PIN or lacks geo anchor
+        if idx == 0 and len(ranked_candidates) > 1:
+            diff_pin = ranked_candidates[0]["record"].pin_code != ranked_candidates[1]["record"].pin_code
+            if (margin < 0.08 and diff_pin and raw < 0.85) or not has_geo_anchor:
+                confidence = confidence * 0.70
 
         confidence = round(min(0.99, max(0.0, confidence)), 4)
 

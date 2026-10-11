@@ -13,6 +13,10 @@ class PostOfficeBase(BaseModel):
     division: Optional[str] = None
     region: Optional[str] = None
     circle: Optional[str] = None
+    taluk: Optional[str] = None
+    telephone: Optional[str] = None
+    related_suboffice: Optional[str] = None
+    related_headoffice: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     has_verified_coords: bool = False
@@ -32,6 +36,10 @@ class PostOfficeUpdate(BaseModel):
     division: Optional[str] = None
     region: Optional[str] = None
     circle: Optional[str] = None
+    taluk: Optional[str] = None
+    telephone: Optional[str] = None
+    related_suboffice: Optional[str] = None
+    related_headoffice: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     has_verified_coords: Optional[bool] = None
@@ -41,8 +49,7 @@ class PostOfficeResponse(PostOfficeBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class PostOfficeListResponse(BaseModel):
     items: List[PostOfficeResponse]

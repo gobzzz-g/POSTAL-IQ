@@ -2,7 +2,8 @@ import re
 from typing import Dict, Any, List, Optional
 from backend.app.ml.entity_extraction.gazetteer import (
     INDIAN_STATES, CITY_TO_DISTRICT, STANDARD_DISTRICTS,
-    KNOWN_LOCALITY_ANCHORS, LANDMARK_INDICATORS
+    KNOWN_LOCALITY_ANCHORS, LANDMARK_INDICATORS,
+    are_districts_compatible, are_states_compatible
 )
 
 # 6-digit PIN code regex for India (starts with 1-9, never 0)
@@ -83,9 +84,23 @@ class EntityExtractor:
                     result["district"] = CITY_TO_DISTRICT[city_key]
                 break
 
-        # 5. Extract Locality from known localities
+        # 5. Extract Locality from known localities (excluding already identified state, district, or city)
+        excluded_geo = set()
+        if result["state"]:
+            excluded_geo.add(result["state"].lower())
+            excluded_geo.update(result["state"].lower().split())
+        for s in INDIAN_STATES.keys():
+            excluded_geo.add(s)
+        if result["district"]:
+            excluded_geo.add(result["district"].lower())
+            excluded_geo.update(result["district"].lower().split())
+        if result["city_or_town"]:
+            excluded_geo.add(result["city_or_town"].lower())
+
         sorted_locs = sorted(self.known_localities.keys(), key=lambda l: len(l), reverse=True)
         for loc_key in sorted_locs:
+            if loc_key in excluded_geo or len(loc_key) < 3:
+                continue
             pattern = rf'\b{re.escape(loc_key)}\b'
             # Also check without spaces (e.g. daryaganj vs darya ganj)
             norm_no_spaces = normalized_text.replace(" ", "")
@@ -93,6 +108,12 @@ class EntityExtractor:
             if re.search(pattern, normalized_text) or (len(key_no_spaces) >= 5 and key_no_spaces in norm_no_spaces):
                 result["locality"] = self.known_localities[loc_key]
                 break
+
+        # Fallback: Extract structured subdivisions (e.g. "sector 16", "phase 2", "block 4")
+        if not result["locality"]:
+            sub_m = re.search(r'\b(?:sector|phase|block|stage|pocket|ward)\s+[0-9a-zA-Z]+\b', normalized_text)
+            if sub_m:
+                result["locality"] = sub_m.group(0).title()
 
         # 6. Extract Landmark clauses
         for ind in LANDMARK_INDICATORS:
@@ -109,22 +130,20 @@ class EntityExtractor:
             key_no_spaces = anchor_key.replace(" ", "")
             if re.search(pattern, normalized_text) or (len(key_no_spaces) >= 5 and key_no_spaces in norm_no_spaces):
                 # Locality detected. Does query explicitly state conflicting state or district?
-                if result["state"] and result["state"].lower() != anchor_state.lower():
+                if result["state"] and not are_states_compatible(result["state"], anchor_state):
                     result["has_geographic_conflict"] = True
                     result["conflict_details"] = (
                         f"Locality '{anchor_key.title()}' belongs to {anchor_dist}, {anchor_state}, "
                         f"which conflicts with specified state '{result['state']}'."
                     )
                     break
-                if result["district"] and result["district"].lower() != anchor_dist.lower():
-                    # Check if district is from a different metro entirely
-                    if not (anchor_dist.lower() in result["district"].lower() or result["district"].lower() in anchor_dist.lower()):
-                        result["has_geographic_conflict"] = True
-                        result["conflict_details"] = (
-                            f"Locality '{anchor_key.title()}' belongs to {anchor_dist}, {anchor_state}, "
-                            f"which conflicts with specified district '{result['district']}'."
-                        )
-                        break
+                if result["district"] and not are_districts_compatible(result["district"], anchor_dist):
+                    result["has_geographic_conflict"] = True
+                    result["conflict_details"] = (
+                        f"Locality '{anchor_key.title()}' belongs to {anchor_dist}, {anchor_state}, "
+                        f"which conflicts with specified district '{result['district']}'."
+                    )
+                    break
 
         return result
 

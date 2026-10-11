@@ -162,11 +162,17 @@ class PredictionService:
 
         overall_conf = primary_match.calibrated_confidence / 100.0
 
-        # Check if ambiguous
         is_ambiguous = False
         clarification_q = None
 
-        if primary_match.confidence_level in ("medium", "low") or (
+        has_geo_anchor = bool(
+            entities.get("pin_code") or
+            entities.get("district") or
+            entities.get("state") or
+            entities.get("city_or_town")
+        )
+
+        if not has_geo_anchor or primary_match.confidence_level in ("medium", "low") or (
             len(relevant_alternatives) > 0 and 
             abs(primary_match.calibrated_confidence - relevant_alternatives[0].calibrated_confidence) < 15.0 and
             primary_match.calibrated_confidence < 85.0

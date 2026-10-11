@@ -40,6 +40,11 @@ class ModelMetric(BaseModel):
     is_active: bool
 
 class DatasetStats(BaseModel):
+    source: str = "Government of India All India Pincode Directory (OGD Platform data.gov.in)"
+    import_date: Optional[datetime] = None
+    last_successful_update: Optional[datetime] = None
+    number_of_records_imported: int = 0
+    rejected_rows: int = 0
     total_post_offices: int
     total_pin_codes: int
     total_districts: int

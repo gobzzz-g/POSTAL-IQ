@@ -13,6 +13,7 @@ def list_post_offices(
     state: Optional[str] = None,
     district: Optional[str] = None,
     delivery_status: Optional[str] = None,
+    has_verified_coords: Optional[bool] = None,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
@@ -23,9 +24,15 @@ def list_post_offices(
         state=state,
         district=district,
         delivery_status=delivery_status,
+        has_verified_coords=has_verified_coords,
         page=page,
         size=size
     )
+
+@router.get("/network-dots")
+def get_network_dots(db: Session = Depends(get_db)):
+    """Returns nationwide postal network dots covering all 154,797 post offices across India."""
+    return postal_service.get_network_dots(db)
 
 @router.get("/post-offices/{po_id}", response_model=PostOfficeResponse)
 def get_post_office_by_id(po_id: int, db: Session = Depends(get_db)):

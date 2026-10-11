@@ -6,7 +6,7 @@ from backend.app.models.post_office import PostOffice
 from backend.app.models.locality_alias import LocalityAlias
 from backend.app.models.history import SearchHistory
 from backend.app.models.feedback import FeedbackReport
-from backend.app.models.admin_user import ModelVersion
+from backend.app.models.admin_user import ModelVersion, DatasetImport
 from backend.app.schemas.admin import AnalyticsResponse, DatasetStats, ModelMetric
 
 class AdminService:
@@ -19,13 +19,26 @@ class AdminService:
         total_aliases = db.query(func.count(LocalityAlias.id)).scalar() or 0
         verified_coords = db.query(func.count(PostOffice.id)).filter(PostOffice.has_verified_coords == True).scalar() or 0
 
+        # Query latest dataset import metadata
+        latest_import = db.query(DatasetImport).order_by(DatasetImport.id.desc()).first()
+        import_source = latest_import.source if latest_import else "Government of India All India Pincode Directory (OGD Platform data.gov.in)"
+        import_date = latest_import.created_at if latest_import else None
+        imported_rows = latest_import.imported_rows if latest_import else total_pos
+        rejected_rows = latest_import.skipped_rows if latest_import else 0
+        dataset_ver = latest_import.version if latest_import else "IndiaPost-Official-2024.1"
+
         dataset_stats = DatasetStats(
+            source=import_source,
+            import_date=import_date,
+            last_successful_update=import_date,
+            number_of_records_imported=imported_rows,
+            rejected_rows=rejected_rows,
             total_post_offices=total_pos,
             total_pin_codes=total_pins,
             total_districts=total_districts,
             total_states=total_states,
             total_aliases=total_aliases,
-            dataset_version="IndiaPost-2024.1",
+            dataset_version=dataset_ver,
             has_verified_coords_count=verified_coords
         )
 
