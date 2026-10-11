@@ -31,6 +31,7 @@ const feedbackStore: Array<{
 }> = [];
 
 let feedbackIdCounter = 1;
+const batchJobsStore = new Map<string, any>();
 
 function jsonResponse(data: any, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -410,8 +411,8 @@ export default {
         });
       }
 
-      // Postal Directory List / Search
-      if (path === '/post-offices') {
+      // Postal Directory List / Search (/post-offices and /search)
+      if (path === '/post-offices' || path === '/search') {
         const q = (url.searchParams.get('q') || url.searchParams.get('query') || '').toLowerCase().trim();
         const state = (url.searchParams.get('state') || '').toLowerCase().trim();
         const district = (url.searchParams.get('district') || '').toLowerCase().trim();
@@ -448,8 +449,17 @@ export default {
         });
       }
 
-      // Autocomplete endpoint
-      if (path === '/search/autocomplete') {
+      // Single Post Office by ID
+      const poSingleMatch = path.match(/^\/post-offices\/(\d+)$/);
+      if (poSingleMatch) {
+        const id = parseInt(poSingleMatch[1], 10);
+        const found = POST_OFFICES.find((po) => po.id === id);
+        if (found) return jsonResponse(found);
+        return jsonResponse({ detail: `Post office with ID ${id} not found.` }, 404);
+      }
+
+      // Autocomplete endpoint (/autocomplete and /search/autocomplete)
+      if (path === '/autocomplete' || path === '/search/autocomplete') {
         const query = (url.searchParams.get('q') || '').toLowerCase().trim();
         if (!query || query.length < 2) return jsonResponse([]);
 
@@ -497,6 +507,151 @@ export default {
         }
       }
 
+      // Batch Validation: POST /batch/validate
+      if (path === '/batch/validate' && request.method === 'POST') {
+        try {
+          let csvText = '';
+          let filename = 'bulk_addresses.csv';
+          let addressColumn = 'address';
+
+          const contentType = request.headers.get('content-type') || '';
+          if (contentType.includes('multipart/form-data')) {
+            const formData = await request.formData();
+            const file = formData.get('file');
+            if (file && typeof file === 'object' && 'text' in file) {
+              csvText = await (file as File).text();
+              filename = (file as File).name || filename;
+            }
+            const col = formData.get('address_column');
+            if (col && typeof col === 'string') addressColumn = col;
+          } else {
+            csvText = await request.text();
+          }
+
+          if (!csvText.trim()) {
+            return jsonResponse({ detail: 'No CSV content provided.' }, 400);
+          }
+
+          // Parse CSV rows simple and reliably
+          const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+          if (lines.length < 2) {
+            return jsonResponse({ detail: 'CSV must contain a header and at least one address row.' }, 400);
+          }
+
+          const headers = lines[0].split(',').map((h) => h.replace(/^"|"$/g, '').trim().toLowerCase());
+          let addrIdx = headers.findIndex((h) => h === addressColumn.toLowerCase());
+          if (addrIdx === -1) {
+            addrIdx = headers.findIndex((h) => h.includes('address') || h.includes('addr') || h.includes('location'));
+          }
+          if (addrIdx === -1) addrIdx = 0; // fallback to first column
+
+          const jobId = 'batch_' + Math.random().toString(36).substring(2, 10);
+          const results: any[] = [];
+          let matchedCount = 0;
+          let ambiguousCount = 0;
+          let unmatchedCount = 0;
+
+          const dataLines = lines.slice(1, 501); // up to 500 rows
+          for (let i = 0; i < dataLines.length; i++) {
+            const rowParts = dataLines[i].split(',').map((p) => p.replace(/^"|"$/g, '').trim());
+            const rawAddr = rowParts[addrIdx] || '';
+            if (!rawAddr || rawAddr.length < 3) {
+              results.push({
+                row_index: i + 1,
+                original_address: rawAddr,
+                normalized_address: '',
+                predicted_pin: null,
+                post_office_name: null,
+                district: null,
+                state: null,
+                confidence: 0,
+                confidence_level: 'none',
+                status: 'unmatched',
+                suggested_alternative: null,
+                review_required: true,
+                notes: 'Empty or malformed address row',
+              });
+              unmatchedCount++;
+              continue;
+            }
+
+            const pred = resolveAddress(rawAddr, undefined, `batch-${jobId}`);
+            if (pred.status === 'matched') {
+              matchedCount++;
+            } else if (pred.status === 'ambiguous') {
+              ambiguousCount++;
+            } else {
+              unmatchedCount++;
+            }
+
+            results.push({
+              row_index: i + 1,
+              original_address: rawAddr,
+              normalized_address: pred.normalized_address || rawAddr,
+              predicted_pin: pred.primary_match?.pin_code || null,
+              post_office_name: pred.primary_match?.post_office_name || null,
+              district: pred.primary_match?.district || null,
+              state: pred.primary_match?.state || null,
+              confidence: pred.confidence,
+              confidence_level: pred.confidence_level,
+              status: pred.status,
+              suggested_alternative: pred.alternatives?.[0] ? `${pred.alternatives[0].post_office_name} (${pred.alternatives[0].pin_code})` : null,
+              review_required: pred.review_required,
+              notes: pred.warnings?.[0] || null,
+            });
+          }
+
+          const batchJob = {
+            job_id: jobId,
+            filename,
+            total_records: dataLines.length,
+            processed_records: dataLines.length,
+            matched_count: matchedCount,
+            ambiguous_count: ambiguousCount,
+            unmatched_count: unmatchedCount,
+            status: 'completed',
+            created_at: new Date().toISOString(),
+            completed_at: new Date().toISOString(),
+            results,
+          };
+
+          batchJobsStore.set(jobId, batchJob);
+          return jsonResponse(batchJob);
+        } catch (err: any) {
+          return jsonResponse({ detail: `Batch validation failed: ${err.message}` }, 400);
+        }
+      }
+
+      // Batch Job Status: GET /batch/:id
+      const batchJobMatch = path.match(/^\/batch\/([a-zA-Z0-9_-]+)$/);
+      if (batchJobMatch && request.method === 'GET') {
+        const jId = batchJobMatch[1];
+        const job = batchJobsStore.get(jId);
+        if (job) return jsonResponse(job);
+        return jsonResponse({ detail: `Batch job ${jId} not found.` }, 404);
+      }
+
+      // Batch Job CSV Download: GET /batch/:id/download
+      const batchDownloadMatch = path.match(/^\/batch\/([a-zA-Z0-9_-]+)\/download$/);
+      if (batchDownloadMatch && request.method === 'GET') {
+        const jId = batchDownloadMatch[1];
+        const job = batchJobsStore.get(jId);
+        if (!job) return jsonResponse({ detail: `Batch job ${jId} not found.` }, 404);
+
+        const csvHeader = 'row_index,original_address,predicted_pin,post_office_name,district,state,confidence,status,notes\n';
+        const csvRows = job.results.map((r: any) =>
+          `"${r.row_index}","${(r.original_address || '').replace(/"/g, '""')}","${r.predicted_pin || ''}","${r.post_office_name || ''}","${r.district || ''}","${r.state || ''}","${r.confidence}","${r.status}","${(r.notes || '').replace(/"/g, '""')}"`
+        ).join('\n');
+
+        return new Response(csvHeader + csvRows, {
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename=postaliq_validation_${jId}.csv`,
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
+      }
+
       // Session History: GET /history
       if (path === '/history' && request.method === 'GET') {
         const sid = url.searchParams.get('session_id') || '';
@@ -535,10 +690,12 @@ export default {
           const body: any = await request.json();
           const report = {
             id: feedbackIdCounter++,
-            session_id: body.session_id,
-            pin_code: body.pin_code,
-            reported_issue: body.reported_issue || 'Inaccuracy',
-            user_notes: body.user_notes,
+            query_text: body.query_text || '',
+            predicted_pin: body.predicted_pin || body.pin_code || null,
+            predicted_post_office: body.predicted_post_office || null,
+            suggested_pin: body.suggested_pin || null,
+            suggested_post_office: body.suggested_post_office || null,
+            user_comment: body.user_comment || body.user_notes || null,
             status: 'pending',
             created_at: new Date().toISOString(),
           };
@@ -552,6 +709,23 @@ export default {
       // Feedback: GET /feedback
       if (path === '/feedback' && request.method === 'GET') {
         return jsonResponse(feedbackStore);
+      }
+
+      // Feedback update: PUT /feedback/:id/status
+      const feedbackStatusMatch = path.match(/^\/feedback\/(\d+)\/status$/);
+      if (feedbackStatusMatch && request.method === 'PUT') {
+        try {
+          const fid = parseInt(feedbackStatusMatch[1], 10);
+          const body: any = await request.json();
+          const item = feedbackStore.find((f) => f.id === fid);
+          if (item) {
+            item.status = body.status || item.status;
+            return jsonResponse(item);
+          }
+          return jsonResponse({ detail: `Feedback report ${fid} not found.` }, 404);
+        } catch {
+          return jsonResponse({ detail: 'Invalid update payload' }, 400);
+        }
       }
 
       // Admin Login: POST /admin/login
@@ -594,7 +768,7 @@ export default {
       }
 
       // Admin Post Offices: GET /admin/post-offices
-      if (path === '/admin/post-offices') {
+      if (path === '/admin/post-offices' && request.method === 'GET') {
         const page = parseInt(url.searchParams.get('page') || '1', 10);
         const size = parseInt(url.searchParams.get('size') || '15', 10);
         const q = (url.searchParams.get('query') || '').toLowerCase().trim();
@@ -620,6 +794,52 @@ export default {
           size,
           total_pages: totalPages,
         });
+      }
+
+      // Admin Create Post Office: POST /admin/post-offices
+      if (path === '/admin/post-offices' && request.method === 'POST') {
+        try {
+          const body: any = await request.json();
+          const newPo = {
+            id: POST_OFFICES.length + 1,
+            post_office_name: body.post_office_name || 'New Office',
+            pin_code: body.pin_code || '000000',
+            office_type: body.office_type || 'Sub Post Office',
+            delivery_status: body.delivery_status || 'Delivery',
+            division_name: body.division_name || '',
+            region_name: body.region_name || '',
+            circle_name: body.circle_name || '',
+            taluk: body.taluk || '',
+            district: body.district || '',
+            state: body.state || '',
+            locality: body.locality || body.post_office_name || '',
+            latitude: body.latitude || 20.5937,
+            longitude: body.longitude || 78.9629,
+            has_verified_coords: !!body.has_verified_coords,
+          };
+          POST_OFFICES.push(newPo);
+          return jsonResponse(newPo, 201);
+        } catch {
+          return jsonResponse({ detail: 'Failed to create post office' }, 400);
+        }
+      }
+
+      // Admin Update/Delete Post Office: PUT/DELETE /admin/post-offices/:id
+      const adminPoMatch = path.match(/^\/admin\/post-offices\/(\d+)$/);
+      if (adminPoMatch) {
+        const id = parseInt(adminPoMatch[1], 10);
+        const idx = POST_OFFICES.findIndex((p) => p.id === id);
+        if (idx === -1) return jsonResponse({ detail: 'Post office not found' }, 404);
+
+        if (request.method === 'PUT') {
+          const body: any = await request.json();
+          POST_OFFICES[idx] = { ...POST_OFFICES[idx], ...body, id };
+          return jsonResponse(POST_OFFICES[idx]);
+        }
+        if (request.method === 'DELETE') {
+          POST_OFFICES.splice(idx, 1);
+          return jsonResponse({ message: 'Post office deleted' });
+        }
       }
 
       // Default API 404: MUST return JSON, NEVER return index.html for API paths!
