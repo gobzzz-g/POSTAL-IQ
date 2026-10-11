@@ -1,4 +1,5 @@
 import { POST_OFFICES, LOCALITY_ALIASES, PostOfficeRecord } from './dataset';
+import { NETWORK_DOTS } from './network_dots';
 
 export interface Env {
   ASSETS: Fetcher;
@@ -412,27 +413,90 @@ export default {
         });
       }
 
+      // Nationwide Network Dots (/network-dots)
+      if (path === '/network-dots') {
+        return jsonResponse(NETWORK_DOTS);
+      }
+
       // Postal Directory List / Search (/post-offices and /search)
       if (path === '/post-offices' || path === '/search') {
-        const q = (url.searchParams.get('q') || url.searchParams.get('query') || '').toLowerCase().trim();
-        const state = (url.searchParams.get('state') || '').toLowerCase().trim();
-        const district = (url.searchParams.get('district') || '').toLowerCase().trim();
-        const deliveryStatus = (url.searchParams.get('delivery_status') || '').toLowerCase().trim();
+        const q = (url.searchParams.get('q') || url.searchParams.get('query') || '').trim();
+        const state = (url.searchParams.get('state') || '').trim();
+        const district = (url.searchParams.get('district') || '').trim();
+        const deliveryStatus = (url.searchParams.get('delivery_status') || '').trim();
         const page = parseInt(url.searchParams.get('page') || '1', 10);
         const size = parseInt(url.searchParams.get('size') || '15', 10);
+        const offset = (page - 1) * size;
+
+        if (env.DB) {
+          try {
+            let sql = 'SELECT * FROM post_offices WHERE 1=1';
+            let countSql = 'SELECT COUNT(*) as total FROM post_offices WHERE 1=1';
+            const params: any[] = [];
+            const countParams: any[] = [];
+
+            if (q) {
+              sql += ' AND (pin_code LIKE ? OR post_office_name LIKE ? OR locality LIKE ? OR district LIKE ? OR state LIKE ?)';
+              countSql += ' AND (pin_code LIKE ? OR post_office_name LIKE ? OR locality LIKE ? OR district LIKE ? OR state LIKE ?)';
+              const term = `%${q}%`;
+              params.push(term, term, term, term, term);
+              countParams.push(term, term, term, term, term);
+            }
+            if (state) {
+              sql += ' AND state LIKE ?';
+              countSql += ' AND state LIKE ?';
+              params.push(`%${state}%`);
+              countParams.push(`%${state}%`);
+            }
+            if (district) {
+              sql += ' AND district LIKE ?';
+              countSql += ' AND district LIKE ?';
+              params.push(`%${district}%`);
+              countParams.push(`%${district}%`);
+            }
+            if (deliveryStatus) {
+              sql += ' AND delivery_status = ?';
+              countSql += ' AND delivery_status = ?';
+              params.push(deliveryStatus);
+              countParams.push(deliveryStatus);
+            }
+
+            sql += ' ORDER BY state, district, post_office_name LIMIT ? OFFSET ?';
+            params.push(size, offset);
+
+            const countRes = await env.DB.prepare(countSql).bind(...countParams).first();
+            const total = countRes?.total || 0;
+            const { results } = await env.DB.prepare(sql).bind(...params).all();
+
+            return jsonResponse({
+              items: results || [],
+              total,
+              page,
+              size,
+              total_pages: Math.max(1, Math.ceil(total / size)),
+            });
+          } catch (e) {
+            console.warn('D1 query failed, falling back:', e);
+          }
+        }
+
+        const qLower = q.toLowerCase();
+        const stateLower = state.toLowerCase();
+        const districtLower = district.toLowerCase();
+        const deliveryStatusLower = deliveryStatus.toLowerCase();
 
         let filtered = POST_OFFICES.filter((po) => {
-          if (q) {
-            const matchName = po.post_office_name.toLowerCase().includes(q);
-            const matchPin = po.pin_code.includes(q);
-            const matchLoc = po.locality.toLowerCase().includes(q);
-            const matchDist = po.district.toLowerCase().includes(q);
-            const matchState = po.state.toLowerCase().includes(q);
+          if (qLower) {
+            const matchName = po.post_office_name.toLowerCase().includes(qLower);
+            const matchPin = po.pin_code.includes(qLower);
+            const matchLoc = po.locality.toLowerCase().includes(qLower);
+            const matchDist = po.district.toLowerCase().includes(qLower);
+            const matchState = po.state.toLowerCase().includes(qLower);
             if (!matchName && !matchPin && !matchLoc && !matchDist && !matchState) return false;
           }
-          if (state && !po.state.toLowerCase().includes(state)) return false;
-          if (district && !po.district.toLowerCase().includes(district)) return false;
-          if (deliveryStatus && !po.delivery_status.toLowerCase().includes(deliveryStatus)) return false;
+          if (stateLower && !po.state.toLowerCase().includes(stateLower)) return false;
+          if (districtLower && !po.district.toLowerCase().includes(districtLower)) return false;
+          if (deliveryStatusLower && !po.delivery_status.toLowerCase().includes(deliveryStatusLower)) return false;
           return true;
         });
 
@@ -454,6 +518,14 @@ export default {
       const poSingleMatch = path.match(/^\/post-offices\/(\d+)$/);
       if (poSingleMatch) {
         const id = parseInt(poSingleMatch[1], 10);
+        if (env.DB) {
+          try {
+            const found = await env.DB.prepare('SELECT * FROM post_offices WHERE id = ?').bind(id).first();
+            if (found) return jsonResponse(found);
+          } catch (e) {
+            console.warn('D1 get single PO failed:', e);
+          }
+        }
         const found = POST_OFFICES.find((po) => po.id === id);
         if (found) return jsonResponse(found);
         return jsonResponse({ detail: `Post office with ID ${id} not found.` }, 404);
@@ -461,14 +533,39 @@ export default {
 
       // Autocomplete endpoint (/autocomplete and /search/autocomplete)
       if (path === '/autocomplete' || path === '/search/autocomplete') {
-        const query = (url.searchParams.get('q') || '').toLowerCase().trim();
+        const query = (url.searchParams.get('q') || '').trim();
         if (!query || query.length < 2) return jsonResponse([]);
 
+        if (env.DB) {
+          try {
+            const term = `%${query}%`;
+            const { results } = await env.DB.prepare(
+              'SELECT id, post_office_name, pin_code, locality, district, state FROM post_offices WHERE pin_code LIKE ? OR post_office_name LIKE ? OR locality LIKE ? LIMIT 8'
+            ).bind(`${query}%`, term, term).all();
+            if (results && results.length > 0) {
+              return jsonResponse(
+                results.map((r: any) => ({
+                  id: r.id,
+                  label: `${r.post_office_name} (${r.pin_code}) - ${r.district}, ${r.state}`,
+                  pin_code: r.pin_code,
+                  post_office_name: r.post_office_name,
+                  locality: r.locality,
+                  district: r.district,
+                  state: r.state,
+                }))
+              );
+            }
+          } catch (e) {
+            console.warn('D1 autocomplete failed:', e);
+          }
+        }
+
+        const queryLower = query.toLowerCase();
         const matches = POST_OFFICES.filter((po) => {
           return (
-            po.post_office_name.toLowerCase().includes(query) ||
-            po.pin_code.includes(query) ||
-            po.locality.toLowerCase().includes(query)
+            po.post_office_name.toLowerCase().includes(queryLower) ||
+            po.pin_code.includes(queryLower) ||
+            po.locality.toLowerCase().includes(queryLower)
           );
         }).slice(0, 8);
 
