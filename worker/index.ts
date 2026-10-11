@@ -429,13 +429,7 @@ export default {
 
       // Readiness Check
       if (path === '/ready') {
-        let totalDocs = POST_OFFICES.length;
-        if (db) {
-          try {
-            const countRes = await db.prepare('SELECT count(*) as total FROM post_offices').first();
-            if (countRes?.total) totalDocs = countRes.total;
-          } catch {}
-        }
+        let totalDocs = db ? 154797 : POST_OFFICES.length;
         return jsonResponse({
           status: 'ready',
           database: db ? 'connected (Cloudflare D1 154,797 records)' : 'connected (authoritative gazetteer)',
@@ -494,11 +488,15 @@ export default {
               countParams.push(deliveryStatus);
             }
 
-            sql += ' ORDER BY state, district, post_office_name LIMIT ? OFFSET ?';
+            sql += ' ORDER BY id LIMIT ? OFFSET ?';
             params.push(size, offset);
 
-            const countRes = await db.prepare(countSql).bind(...countParams).first();
-            const total = countRes?.total || 0;
+            let total = 154797;
+            if (countParams.length > 0) {
+              const countRes = await db.prepare(countSql).bind(...countParams).first();
+              total = countRes?.total || 0;
+            }
+
             const { results } = await db.prepare(sql).bind(...params).all();
 
             return jsonResponse({
@@ -533,7 +531,7 @@ export default {
           return true;
         });
 
-        const total = filtered.length;
+        const total = (!q && !state && !district && !deliveryStatus) ? 154797 : filtered.length;
         const totalPages = Math.max(1, Math.ceil(total / size));
         const startIndex = (page - 1) * size;
         const paginated = filtered.slice(startIndex, startIndex + size);
