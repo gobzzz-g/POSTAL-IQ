@@ -4,7 +4,7 @@
   "private": true,
   "description": "POSTALIQ — Intelligent Indian PIN Code & Postal Intelligence Platform",
   "scripts": {
-    "build": "npm --prefix frontend run build",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
     "test": "npm --prefix frontend test",
     "deploy": "npm run build && wrangler deploy"
   },
