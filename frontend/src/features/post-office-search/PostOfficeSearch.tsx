@@ -179,6 +179,21 @@ export const PostOfficeSearch: React.FC = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-[#A01D26]/10 border border-amber-200 dark:border-[#A01D26]/30 text-xs flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-[#FF6B6B] font-semibold">
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={fetchRecords}
+            className="px-3.5 py-1.5 rounded-full bg-[#A01D26] text-white font-bold text-xs inline-flex items-center gap-1.5 hover:bg-[#85161E] transition-colors cursor-pointer shrink-0"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Results Table Panel */}
       <div className="bg-white dark:bg-[#1B1C1D] rounded-[30px] border border-slate-200 dark:border-white/20 shadow-xl dark:shadow-2xl overflow-hidden transition-colors">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between text-xs text-slate-600 dark:text-[#D9D9D9]">

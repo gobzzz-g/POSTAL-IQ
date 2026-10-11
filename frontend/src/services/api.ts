@@ -58,6 +58,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   const res = await fetch(url, { ...options, headers })
 
+  const contentType = res.headers.get('content-type') || ''
+  if (!contentType.includes('application/json')) {
+    if (!res.ok) {
+      throw new Error(`API request failed with HTTP ${res.status}. Postal intelligence service may be unavailable.`)
+    }
+    throw new Error('API server returned an HTML document instead of JSON. Intelligence engine is offline.')
+  }
+
   if (!res.ok) {
     let errorMsg = `Request failed (${res.status})`
     try {
@@ -71,7 +79,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     throw new Error(errorMsg)
   }
 
-  return res.json() as Promise<T>
+  try {
+    return (await res.json()) as Promise<T>
+  } catch (err: any) {
+    throw new Error('Failed to parse postal service response. Upstream payload malformed.')
+  }
 }
 
 export const api = {

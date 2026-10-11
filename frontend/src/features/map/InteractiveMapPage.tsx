@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MapPin, Search, Compass, Info, CheckCircle2 } from 'lucide-react'
+import { MapPin, Search, Compass, Info, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react'
 import { api } from '@/services/api'
 import { PostOffice } from '@/types'
 import { PostalMap } from '@/components/common/PostalMap'
@@ -9,9 +9,11 @@ export const InteractiveMapPage: React.FC = () => {
   const [selectedOffice, setSelectedOffice] = useState<PostOffice | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadData = () => {
     setLoading(true)
+    setError(null)
     api
       .searchPostOffices({ size: 100 })
       .then((res) => {
@@ -21,7 +23,14 @@ export const InteractiveMapPage: React.FC = () => {
           if (verified) setSelectedOffice(verified)
         }
       })
+      .catch((err) => {
+        setError(err.message || 'Unable to connect to postal intelligence engine')
+      })
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    loadData()
   }, [])
 
   const filteredOffices = postOffices.filter((p) => {
@@ -64,9 +73,31 @@ export const InteractiveMapPage: React.FC = () => {
 
           {/* Postal-node list */}
           <div className="flex-1 overflow-y-auto space-y-2.5 p-1 pr-2.5">
-            {filteredOffices.length === 0 ? (
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center text-xs text-slate-500 dark:text-[#D9D9D9]/70 space-y-3">
+                <RefreshCw className="w-5 h-5 text-[#A01D26] animate-spin" />
+                <span>Loading verified postal survey nodes...</span>
+              </div>
+            ) : error ? (
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-[#A01D26]/10 border border-amber-200 dark:border-[#A01D26]/30 text-xs space-y-2.5 my-4">
+                <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-[#FF6B6B]">
+                  <AlertCircle className="w-4 h-4 text-[#A01D26]" />
+                  <span>Connection Notice</span>
+                </div>
+                <p className="text-slate-600 dark:text-[#D9D9D9]/80 text-[11px] leading-relaxed">
+                  {error}
+                </p>
+                <button
+                  onClick={loadData}
+                  className="px-3 py-1.5 rounded-full bg-[#A01D26] text-white font-bold text-[10px] inline-flex items-center gap-1.5 hover:bg-[#85161E] transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Retry Connection</span>
+                </button>
+              </div>
+            ) : filteredOffices.length === 0 ? (
               <div className="text-center py-12 text-xs text-slate-400 dark:text-[#D9D9D9]/60">
-                {loading ? 'Loading postal network...' : 'No post offices matching filter.'}
+                {searchTerm ? `No post offices matching "${searchTerm}".` : 'No post offices found.'}
               </div>
             ) : (
               filteredOffices.map((po) => {
