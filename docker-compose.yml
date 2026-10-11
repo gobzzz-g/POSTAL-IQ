@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: postaliq_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postaliq
+      POSTGRES_USER: postaliq_user
+      POSTGRES_PASSWORD: postaliq_secure_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postaliq_user -d postaliq"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: postaliq_backend
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://postaliq_user:postaliq_secure_password@db:5432/postaliq
+      - SECRET_KEY=postaliq-docker-production-secret-key-98765
+      - ENV=production
+      - DEBUG=false
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: postaliq_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

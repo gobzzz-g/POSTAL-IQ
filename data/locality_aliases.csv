@@ -1,0 +1,59 @@
+alias_name,standard_name,pin_code,district,state
+CP,Connaught Place,110001,New Delhi,Delhi
+Connaught Circus,Connaught Place,110001,New Delhi,Delhi
+Rajiv Chowk,Connaught Place,110001,New Delhi,Delhi
+Daryaganj,Daryaganj,110002,Central Delhi,Delhi
+Cyber City,Cyber City,122002,Gurugram,Haryana
+Cyber Hub,Cyber City,122002,Gurugram,Haryana
+Atta Market,Atta Market,201303,Gautam Buddha Nagar,Uttar Pradesh
+Fort Mumbai,Fort,400001,Mumbai,Maharashtra
+Nariman Point,Fort,400001,Mumbai,Maharashtra
+Bandra West,Bandra West,400050,Mumbai Suburban,Maharashtra
+BKC,BKC,400051,Mumbai Suburban,Maharashtra
+Bandra Kurla Complex,BKC,400051,Mumbai Suburban,Maharashtra
+Andheri West,Andheri West,400053,Mumbai Suburban,Maharashtra
+Lokhandwala,Andheri West,400053,Mumbai Suburban,Maharashtra
+Andheri East,Andheri East,400069,Mumbai Suburban,Maharashtra
+MIDC Andheri,Andheri East,400069,Mumbai Suburban,Maharashtra
+Powai,Powai IIT,400076,Mumbai Suburban,Maharashtra
+Hiranandani Powai,Powai IIT,400076,Mumbai Suburban,Maharashtra
+FC Road,FC Road Deccan,411004,Pune,Maharashtra
+Fergusson College Road,FC Road Deccan,411004,Pune,Maharashtra
+Hinjewadi,Hinjewadi Infotech Park,411057,Pune,Maharashtra
+Hinjawadi Phase 1,Hinjewadi Infotech Park,411057,Pune,Maharashtra
+Financial District,Gachibowli Financial District,500032,Hyderabad,Telangana
+Hitech City,Hitech City Madhapur,500081,Hyderabad,Telangana
+HITEC City,Hitech City Madhapur,500081,Hyderabad,Telangana
+Cyberabad,Hitech City Madhapur,500081,Hyderabad,Telangana
+Ulsoor,Ulsoor,560008,Bengaluru Urban,Karnataka
+MG Road Bangalore,Raj Bhavan Road,560001,Bengaluru Urban,Karnataka
+Brigade Road,Richmond Town,560025,Bengaluru Urban,Karnataka
+Koramangala,Koramangala 4th Block,560034,Bengaluru Urban,Karnataka
+Kormangala,Koramangala 4th Block,560034,Bengaluru Urban,Karnataka
+Indiranagar,Indiranagar 100 Feet Road,560038,Bengaluru Urban,Karnataka
+Indira Nagar,Indiranagar 100 Feet Road,560038,Bengaluru Urban,Karnataka
+Whitefield,ITPB Whitefield,560066,Bengaluru Urban,Karnataka
+ITPB,ITPB Whitefield,560066,Bengaluru Urban,Karnataka
+Whitefeild,ITPB Whitefield,560066,Bengaluru Urban,Karnataka
+Electronic City,Electronic City Phase 1,560100,Bengaluru Urban,Karnataka
+Electronics City,Electronic City Phase 1,560100,Bengaluru Urban,Karnataka
+ECity,Electronic City Phase 1,560100,Bengaluru Urban,Karnataka
+HSR Layout,HSR Layout Sector 1,560102,Bengaluru Urban,Karnataka
+Hosur Sarjapur Road Layout,HSR Layout Sector 1,560102,Bengaluru Urban,Karnataka
+T Nagar,Thyagaraya Nagar,600017,Chennai,Tamil Nadu
+Thyagaraya Nagar,Thyagaraya Nagar,600017,Chennai,Tamil Nadu
+RA Puram,RA Puram,600028,Chennai,Tamil Nadu
+Anna Nagar,Anna Nagar West,600040,Chennai,Tamil Nadu
+OMR,OMR Perungudi,600096,Chennai,Tamil Nadu
+Old Mahabalipuram Road,OMR Perungudi,600096,Chennai,Tamil Nadu
+Fort Kochi,Fort Kochi,682001,Ernakulam,Kerala
+Infopark,Infopark Kakkanad,682030,Ernakulam,Kerala
+BBD Bagh,BBD Bagh Dalhousie,700001,Kolkata,West Bengal
+Dalhousie Square,BBD Bagh Dalhousie,700001,Kolkata,West Bengal
+Salt Lake,Sector 1 Bidhannagar,700064,North 24 Parganas,West Bengal
+Bidhannagar,Sector 1 Bidhannagar,700064,North 24 Parganas,West Bengal
+Salt Lake Sector 5,Salt Lake Electronics Complex,700091,North 24 Parganas,West Bengal
+Darya Ganj,Daryaganj,110002,Central Delhi,Delhi
+Shakarpur,Laxmi Nagar,110092,East Delhi,Delhi
+Gandhipuram,Gandhipuram,641012,Coimbatore,Tamil Nadu
+Gandhipurm,Gandhipuram,641012,Coimbatore,Tamil Nadu

@@ -1,0 +1,56 @@
+pin_code,post_office_name,office_type,delivery_status,locality,district,state,division,region,circle,latitude,longitude,has_verified_coords
+110001,Connaught Place Head Post Office,Head Post Office,Delivery,Connaught Place,New Delhi,Delhi,New Delhi Central,Delhi,Delhi Circle,28.6328,77.2197,true
+110002,Darya Ganj Sub Post Office,Sub Post Office,Delivery,Daryaganj,Central Delhi,Delhi,New Delhi Central,Delhi,Delhi Circle,28.6469,77.2410,true
+110003,Aliganj Sub Post Office,Sub Post Office,Delivery,Lodhi Road,South Delhi,Delhi,New Delhi South,Delhi,Delhi Circle,28.5828,77.2215,true
+110016,Hauz Khas Sub Post Office,Sub Post Office,Delivery,Hauz Khas,South Delhi,Delhi,New Delhi South,Delhi,Delhi Circle,28.5494,77.2001,true
+110019,Kalkaji Head Post Office,Head Post Office,Delivery,Kalkaji,South East Delhi,Delhi,New Delhi South,Delhi,Delhi Circle,28.5385,77.2612,true
+110020,Okhla Industrial Area Sub Post Office,Sub Post Office,Delivery,Okhla Phase II,South East Delhi,Delhi,New Delhi South,Delhi,Delhi Circle,28.5302,77.2764,true
+110029,Nauroji Nagar Sub Post Office,Sub Post Office,Delivery,Safdarjung Enclave,South West Delhi,Delhi,New Delhi South West,Delhi,Delhi Circle,28.5684,77.1994,true
+110092,Shakarpur Sub Post Office,Sub Post Office,Delivery,Laxmi Nagar,East Delhi,Delhi,Delhi East,Delhi,Delhi Circle,28.6304,77.2773,true
+122001,Gurgaon Head Post Office,Head Post Office,Delivery,Old Railway Road,Gurugram,Haryana,Gurgaon,Ambala,Haryana Circle,28.4595,77.0266,true
+122002,DLF Phase II Sub Post Office,Sub Post Office,Delivery,Cyber City,Gurugram,Haryana,Gurgaon,Ambala,Haryana Circle,28.4870,77.0890,true
+201301,Noida Sector 16 Sub Post Office,Sub Post Office,Delivery,Sector 16 Noida,Gautam Buddha Nagar,Uttar Pradesh,Ghaziabad,Bareilly,Uttar Pradesh Circle,28.5780,77.3178,true
+201303,Noida Sector 27 Sub Post Office,Sub Post Office,Delivery,Atta Market,Gautam Buddha Nagar,Uttar Pradesh,Ghaziabad,Bareilly,Uttar Pradesh Circle,28.5744,77.3320,true
+302001,Jaipur General Post Office,Head Post Office,Delivery,MI Road,Jaipur,Rajasthan,Jaipur City,Jaipur,Rajasthan Circle,26.9174,75.8080,true
+302017,Malviya Nagar Sub Post Office,Sub Post Office,Delivery,Malviya Nagar,Jaipur,Rajasthan,Jaipur City,Jaipur,Rajasthan Circle,26.8530,75.8190,true
+380009,Navrangpura Sub Post Office,Sub Post Office,Delivery,Navrangpura,Ahmedabad,Gujarat,Ahmedabad City,Ahmedabad,Gujarat Circle,23.0360,72.5610,true
+380015,Vastrapur Sub Post Office,Sub Post Office,Delivery,Vastrapur,Ahmedabad,Gujarat,Ahmedabad City,Ahmedabad,Gujarat Circle,23.0350,72.5290,true
+400001,Mumbai General Post Office,Head Post Office,Delivery,Fort,Mumbai,Maharashtra,Mumbai City,Mumbai,Maharashtra Circle,18.9400,72.8350,true
+400050,Bandra Sub Post Office,Sub Post Office,Delivery,Bandra West,Mumbai Suburban,Maharashtra,Mumbai West,Mumbai,Maharashtra Circle,19.0596,72.8295,true
+400051,Bandra Kurla Complex Sub Post Office,Sub Post Office,Delivery,BKC,Mumbai Suburban,Maharashtra,Mumbai West,Mumbai,Maharashtra Circle,19.0657,72.8687,true
+400053,Andheri Sub Post Office,Sub Post Office,Delivery,Andheri West,Mumbai Suburban,Maharashtra,Mumbai West,Mumbai,Maharashtra Circle,19.1197,72.8464,true
+400069,Andheri East Sub Post Office,Sub Post Office,Delivery,Andheri East,Mumbai Suburban,Maharashtra,Mumbai West,Mumbai,Maharashtra Circle,19.1155,72.8690,true
+400076,Powai Sub Post Office,Sub Post Office,Delivery,Powai IIT,Mumbai Suburban,Maharashtra,Mumbai East,Mumbai,Maharashtra Circle,19.1176,72.9060,true
+411001,Pune General Post Office,Head Post Office,Delivery,Camp,Pune,Maharashtra,Pune City,Pune,Maharashtra Circle,18.5204,73.8743,true
+411004,Deccan Gymkhana Sub Post Office,Sub Post Office,Delivery,FC Road Deccan,Pune,Maharashtra,Pune City,Pune,Maharashtra Circle,18.5167,73.8417,true
+411014,Viman Nagar Sub Post Office,Sub Post Office,Delivery,Viman Nagar,Pune,Maharashtra,Pune City,Pune,Maharashtra Circle,18.5679,73.9143,true
+411057,Hinjawadi Sub Post Office,Sub Post Office,Delivery,Hinjewadi Infotech Park,Pune,Maharashtra,Pune City,Pune,Maharashtra Circle,18.5913,73.7389,true
+500001,Hyderabad General Post Office,Head Post Office,Delivery,Abids,Hyderabad,Telangana,Hyderabad City,Hyderabad,Telangana Circle,17.3871,78.4770,true
+500032,Gachibowli Sub Post Office,Sub Post Office,Delivery,Gachibowli Financial District,Hyderabad,Telangana,Hyderabad South,Hyderabad,Telangana Circle,17.4401,78.3489,true
+500034,Banjara Hills Sub Post Office,Sub Post Office,Delivery,Banjara Hills Road 12,Hyderabad,Telangana,Hyderabad City,Hyderabad,Telangana Circle,17.4156,78.4347,true
+500081,Madhapur Sub Post Office,Sub Post Office,Delivery,Hitech City Madhapur,Hyderabad,Telangana,Hyderabad South,Hyderabad,Telangana Circle,17.4483,78.3915,true
+560001,Bengaluru General Post Office,Head Post Office,Delivery,Raj Bhavan Road,Bengaluru Urban,Karnataka,Bangalore East,Bangalore,Karnataka Circle,12.9806,77.5979,true
+560004,Basavanagudi Sub Post Office,Sub Post Office,Delivery,Gandhi Bazaar,Bengaluru Urban,Karnataka,Bangalore South,Bangalore,Karnataka Circle,12.9419,77.5755,true
+560008,Halasuru Sub Post Office,Sub Post Office,Delivery,Ulsoor,Bengaluru Urban,Karnataka,Bangalore East,Bangalore,Karnataka Circle,12.9782,77.6253,true
+560025,Richmond Town Sub Post Office,Sub Post Office,Delivery,Richmond Town,Bengaluru Urban,Karnataka,Bangalore East,Bangalore,Karnataka Circle,12.9634,77.6019,true
+560034,Koramangala Sub Post Office,Sub Post Office,Delivery,Koramangala 4th Block,Bengaluru Urban,Karnataka,Bangalore South,Bangalore,Karnataka Circle,12.9352,77.6245,true
+560038,Indiranagar Sub Post Office,Sub Post Office,Delivery,Indiranagar 100 Feet Road,Bengaluru Urban,Karnataka,Bangalore East,Bangalore,Karnataka Circle,12.9784,77.6408,true
+560066,Whitefield Sub Post Office,Sub Post Office,Delivery,ITPB Whitefield,Bengaluru Urban,Karnataka,Bangalore East,Bangalore,Karnataka Circle,12.9698,77.7499,true
+560068,Madivala Sub Post Office,Sub Post Office,Delivery,Bommanahalli,Bengaluru Urban,Karnataka,Bangalore South,Bangalore,Karnataka Circle,12.9171,77.6228,true
+560100,Electronic City Sub Post Office,Sub Post Office,Delivery,Electronic City Phase 1,Bengaluru Urban,Karnataka,Bangalore South,Bangalore,Karnataka Circle,12.8452,77.6602,true
+560102,HSR Layout Sub Post Office,Sub Post Office,Delivery,HSR Layout Sector 1,Bengaluru Urban,Karnataka,Bangalore South,Bangalore,Karnataka Circle,12.9121,77.6446,true
+570001,Mysuru Head Post Office,Head Post Office,Delivery,City Centre,Mysuru,Karnataka,Mysore,South Karnataka,Karnataka Circle,12.3051,76.6554,true
+600001,Chennai General Post Office,Head Post Office,Delivery,George Town,Chennai,Tamil Nadu,Chennai City North,Chennai,Tamil Nadu Circle,13.0900,80.2900,true
+600017,T Nagar Head Post Office,Head Post Office,Delivery,Thyagaraya Nagar,Chennai,Tamil Nadu,Chennai City Central,Chennai,Tamil Nadu Circle,13.0418,80.2341,true
+600028,Raja Annamalaipuram Sub Post Office,Sub Post Office,Delivery,RA Puram,Chennai,Tamil Nadu,Chennai City South,Chennai,Tamil Nadu Circle,13.0240,80.2580,true
+600040,Anna Nagar Head Post Office,Head Post Office,Delivery,Anna Nagar West,Chennai,Tamil Nadu,Chennai City North,Chennai,Tamil Nadu Circle,13.0850,80.2100,true
+600096,Perungudi Sub Post Office,Sub Post Office,Delivery,OMR Perungudi,Chennai,Tamil Nadu,Chennai City South,Chennai,Tamil Nadu Circle,12.9654,80.2461,true
+682001,Kochi Head Post Office,Head Post Office,Delivery,Fort Kochi,Ernakulam,Kerala,Ernakulam,Kochi,Kerala Circle,9.9656,76.2421,true
+682030,Kakkanad Sub Post Office,Sub Post Office,Delivery,Infopark Kakkanad,Ernakulam,Kerala,Ernakulam,Kochi,Kerala Circle,10.0159,76.3419,true
+695001,Thiruvananthapuram General Post Office,Head Post Office,Delivery,Palayam,Thiruvananthapuram,Kerala,Trivandrum North,Trivandrum,Kerala Circle,8.4998,76.9489,true
+700001,Kolkata General Post Office,Head Post Office,Delivery,BBD Bagh Dalhousie,Kolkata,West Bengal,Calcutta GPO,Kolkata,West Bengal Circle,22.5726,88.3476,true
+700064,Salt Lake Sub Post Office,Sub Post Office,Delivery,Sector 1 Bidhannagar,North 24 Parganas,West Bengal,Kolkata East,Kolkata,West Bengal Circle,22.5867,88.4178,true
+700091,Salt Lake Sector V Sub Post Office,Sub Post Office,Delivery,Salt Lake Electronics Complex,North 24 Parganas,West Bengal,Kolkata East,Kolkata,West Bengal Circle,22.5735,88.4331,true
+751001,Bhubaneswar General Post Office,Head Post Office,Delivery,Bapuji Nagar,Khordha,Odisha,Bhubaneswar,Bhubaneswar,Odisha Circle,20.2644,85.8281,true
+800001,Patna General Post Office,Head Post Office,Delivery,Station Road,Patna,Bihar,Patna,Patna,Bihar Circle,25.6093,85.1376,true
+641012,Gandhipuram Sub Post Office,Sub Post Office,Delivery,Gandhipuram,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,Tamil Nadu Circle,11.0183,76.9644,true

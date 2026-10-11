@@ -1,0 +1,11 @@
+Row,Original Address,Normalized Address,Predicted PIN,Post Office,District,State,Confidence (%),Status,Review Required,Suggested Alternative,Notes
+1,"Patna General Post Office, Station Road, Patna, Bihar",patna general post office station road patna bihar,800001,Patna General Post Office,Patna,Bihar,99.0,matched,NO,,
+2,"Darya Ganj, Central Delhi, Delhi",darya ganj central delhi delhi,110002,Darya Ganj Sub Post Office,Central Delhi,Delhi,44.8,ambiguous,YES,Alternative: Connaught Place Head Post Office (110001),
+3,"Shakarpur, East Delhi, Delhi",shakarpur east delhi delhi,110092,Shakarpur Sub Post Office,East Delhi,Delhi,40.3,ambiguous,YES,Alternative: Kalkaji Head Post Office (110019),
+4,"Connaught Place, New Delhi, Delhi",connaught place new delhi delhi,110001,Connaught Place Head Post Office,New Delhi,Delhi,99.0,matched,NO,,
+5,"Hauz Khas, South Delhi, Delhi",hauz khas south delhi delhi,110016,Hauz Khas Sub Post Office,South Delhi,Delhi,99.0,matched,NO,,
+6,"Gandhipuram, Coimbatore, Tamil Nadu",gandhipuram coimbatore tamil nadu,600017,T Nagar Head Post Office,Chennai,Tamil Nadu,40.0,ambiguous,YES,Alternative: Chennai General Post Office (600001),
+7,"Gandhipurm, Coimbatore, Tamil Nadu",gandhipurm coimbatore tamil nadu,600017,T Nagar Head Post Office,Chennai,Tamil Nadu,40.0,ambiguous,YES,Alternative: Chennai General Post Office (600001),
+8,"Unknown locality xyzqv, Nowhere District, Imaginary State",unknown locality xyzqv nowhere district imaginary state,500032,Gachibowli Sub Post Office,Hyderabad,Telangana,39.5,ambiguous,YES,Alternative: Patna General Post Office (800001),
+9,"Darya Ganj, Patna, Bihar",darya ganj patna bihar,,,,,0.0,unmatched,YES,,"Insufficient evidence to identify verified Indian PIN code. Please specify city, district, or landmark."
+10,,,,,,,0.0,unmatched,NO,,Empty address row
