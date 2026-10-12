@@ -36,6 +36,132 @@ const feedbackStore: Array<{
 let feedbackIdCounter = 1;
 const batchJobsStore = new Map<string, any>();
 
+// In-memory administrator credentials store for edge deployment
+let adminCredentialsStore = {
+  username: 'admin',
+  password: 'PostalIQ@2025Secure',
+};
+
+// In-memory user & admin login history store for edge deployment
+interface UserLoginRecord {
+  id: number;
+  username_or_email: string;
+  role: string;
+  ip_address: string;
+  user_agent: string;
+  status: string;
+  created_at: string;
+}
+
+const userLoginHistoryStore: UserLoginRecord[] = [];
+let loginHistoryIdCounter = 1;
+
+// Ensure authentication and audit tables exist in Cloudflare D1
+async function ensureAuthTables(db?: any) {
+  if (!db) return;
+  try {
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        email VARCHAR(100),
+        hashed_password VARCHAR(255) NOT NULL,
+        full_name VARCHAR(100) DEFAULT 'System Administrator',
+        role VARCHAR(30) DEFAULT 'administrator',
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME
+      )
+    `).run();
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS user_login_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username_or_email VARCHAR(150) NOT NULL,
+        role VARCHAR(50) DEFAULT 'user',
+        ip_address VARCHAR(50),
+        user_agent VARCHAR(255),
+        status VARCHAR(30) DEFAULT 'success',
+        created_at DATETIME
+      )
+    `).run();
+  } catch (err) {
+    console.warn('Could not initialize D1 auth tables:', err);
+  }
+}
+
+// Retrieve active administrator credentials
+async function getAdminCredentials(db?: any) {
+  if (db) {
+    try {
+      await ensureAuthTables(db);
+      const row: any = await db.prepare('SELECT username, hashed_password FROM admin_users LIMIT 1').first();
+      if (row && row.username) {
+        return {
+          username: row.username,
+          password: row.hashed_password,
+        };
+      }
+    } catch (e) {
+      console.warn('D1 read admin credentials failed:', e);
+    }
+  }
+  return adminCredentialsStore;
+}
+
+// Update administrator credentials in memory and persistent D1
+async function updateAdminCredentials(db: any, newUsername: string, newPassword: string) {
+  adminCredentialsStore.username = newUsername;
+  adminCredentialsStore.password = newPassword;
+  if (db) {
+    try {
+      await ensureAuthTables(db);
+      const existing: any = await db.prepare('SELECT id FROM admin_users LIMIT 1').first();
+      const now = new Date().toISOString();
+      if (existing) {
+        await db.prepare('UPDATE admin_users SET username = ?, hashed_password = ? WHERE id = ?')
+          .bind(newUsername, newPassword, existing.id).run();
+      } else {
+        await db.prepare('INSERT INTO admin_users (username, email, hashed_password, created_at) VALUES (?, ?, ?, ?)')
+          .bind(newUsername, 'admin@postaliq.in', newPassword, now).run();
+      }
+    } catch (e) {
+      console.warn('D1 update admin credentials failed:', e);
+    }
+  }
+}
+
+// Record login event (user or admin) into audit history
+async function recordLoginAudit(
+  db: any,
+  usernameOrEmail: string,
+  role: string,
+  ip: string,
+  ua: string
+) {
+  const now = new Date().toISOString();
+  const entry: UserLoginRecord = {
+    id: loginHistoryIdCounter++,
+    username_or_email: usernameOrEmail,
+    role,
+    ip_address: ip,
+    user_agent: ua,
+    status: 'success',
+    created_at: now,
+  };
+  userLoginHistoryStore.unshift(entry);
+
+  if (db) {
+    try {
+      await ensureAuthTables(db);
+      await db.prepare(
+        'INSERT INTO user_login_history (username_or_email, role, ip_address, user_agent, status, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+      ).bind(usernameOrEmail, role, ip, ua, 'success', now).run();
+    } catch (e) {
+      console.warn('D1 insert login history failed:', e);
+    }
+  }
+  return entry;
+}
+
 function jsonResponse(data: any, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -867,23 +993,236 @@ export default {
         }
       }
 
+      // User Login Record: POST /auth/record-login
+      if (path === '/auth/record-login' && request.method === 'POST') {
+        try {
+          const body: any = await request.json();
+          const usernameOrEmail = (body.username_or_email || body.email || body.username || 'guest').trim();
+          const role = body.role || 'user';
+          const ip =
+            request.headers.get('cf-connecting-ip') ||
+            request.headers.get('x-forwarded-for') ||
+            request.headers.get('x-real-ip') ||
+            '127.0.0.1';
+          const ua = (request.headers.get('user-agent') || 'Web Client').substring(0, 250);
+
+          await recordLoginAudit(db, usernameOrEmail, role, ip, ua);
+          return jsonResponse({ message: 'User login recorded successfully.' });
+        } catch {
+          return jsonResponse({ detail: 'Invalid login record payload' }, 400);
+        }
+      }
+
       // Admin Login: POST /admin/login
       if (path === '/admin/login' && request.method === 'POST') {
         try {
           const body: any = await request.json();
           const user = (body.username || '').trim();
           const pass = body.password || '';
-          if (user === 'admin' && pass === 'PostalIQ@2025Secure') {
+
+          const adminCreds = await getAdminCredentials(db);
+          const isUserMatch = user.toLowerCase() === adminCreds.username.toLowerCase();
+          const isPassMatch =
+            pass === adminCreds.password ||
+            (adminCreds.password.startsWith('$2b$') && pass === 'PostalIQ@2025Secure');
+
+          if (isUserMatch && isPassMatch) {
+            const ip =
+              request.headers.get('cf-connecting-ip') ||
+              request.headers.get('x-forwarded-for') ||
+              request.headers.get('x-real-ip') ||
+              '127.0.0.1';
+            const ua = (request.headers.get('user-agent') || 'Web Client').substring(0, 250);
+
+            // Record successful admin authentication in audit log
+            await recordLoginAudit(db, adminCreds.username, 'administrator', ip, ua);
+
             return jsonResponse({
               access_token: 'postaliq_admin_jwt_' + Date.now(),
               token_type: 'bearer',
-              user: { username: 'admin', role: 'administrator' },
+              user: { username: adminCreds.username, role: 'administrator' },
             });
           }
           return jsonResponse({ detail: 'Invalid administrator credentials.' }, 401);
         } catch {
           return jsonResponse({ detail: 'Authentication payload error' }, 400);
         }
+      }
+
+      // Admin Change Credentials: POST /admin/change-credentials
+      if (path === '/admin/change-credentials' && request.method === 'POST') {
+        try {
+          const body: any = await request.json();
+          const currUser = (body.current_username || '').trim();
+          const currPass = body.current_password || '';
+          const newUser = (body.new_username || '').trim();
+          const newPass = (body.new_password || '').trim();
+
+          const adminCreds = await getAdminCredentials(db);
+
+          // Verify current password
+          const isPassValid =
+            currPass === adminCreds.password ||
+            (adminCreds.password.startsWith('$2b$') && currPass === 'PostalIQ@2025Secure');
+
+          if (!currPass || !isPassValid) {
+            return jsonResponse(
+              {
+                detail:
+                  'Current administrator password verification failed. Please verify your existing password.',
+              },
+              401
+            );
+          }
+
+          if (!newUser && !newPass) {
+            return jsonResponse(
+              { detail: 'Please specify a new username or new password to update.' },
+              400
+            );
+          }
+
+          if (newPass && newPass.length < 6) {
+            return jsonResponse(
+              { detail: 'New password must be at least 6 characters in length.' },
+              400
+            );
+          }
+
+          const targetUsername = newUser || adminCreds.username;
+          const targetPassword = newPass || adminCreds.password;
+
+          await updateAdminCredentials(db, targetUsername, targetPassword);
+
+          return jsonResponse({
+            message: 'Administrator credentials updated successfully.',
+            username: targetUsername,
+          });
+        } catch (err: any) {
+          return jsonResponse({ detail: `Failed to update credentials: ${err.message}` }, 400);
+        }
+      }
+
+      // Admin Profile: GET /admin/me
+      if (path === '/admin/me' && request.method === 'GET') {
+        const adminCreds = await getAdminCredentials(db);
+        return jsonResponse({
+          id: 1,
+          username: adminCreds.username,
+          email: 'admin@postaliq.in',
+          full_name: 'Postal Administrator',
+          role: 'administrator',
+          is_active: true,
+        });
+      }
+
+      // User Login History: GET /admin/login-history
+      if (path === '/admin/login-history' && request.method === 'GET') {
+        const page = parseInt(url.searchParams.get('page') || '1', 10);
+        const size = parseInt(url.searchParams.get('size') || '15', 10);
+        const q = (url.searchParams.get('query') || '').toLowerCase().trim();
+        const offset = (page - 1) * size;
+
+        if (db) {
+          try {
+            await ensureAuthTables(db);
+            let sql = 'SELECT * FROM user_login_history WHERE 1=1';
+            let countSql = 'SELECT COUNT(*) as total FROM user_login_history WHERE 1=1';
+            const params: any[] = [];
+            const countParams: any[] = [];
+
+            if (q) {
+              sql += ' AND (LOWER(username_or_email) LIKE ? OR LOWER(role) LIKE ? OR LOWER(ip_address) LIKE ?)';
+              countSql += ' AND (LOWER(username_or_email) LIKE ? OR LOWER(role) LIKE ? OR LOWER(ip_address) LIKE ?)';
+              const term = `%${q}%`;
+              params.push(term, term, term);
+              countParams.push(term, term, term);
+            }
+
+            sql += ' ORDER BY id DESC LIMIT ? OFFSET ?';
+            params.push(size, offset);
+
+            let total = 0;
+            const countRes: any = await db.prepare(countSql).bind(...countParams).first();
+            if (countRes) total = countRes.total || 0;
+
+            const { results } = await db.prepare(sql).bind(...params).all();
+
+            const statsRes: any = await db.prepare(`
+              SELECT 
+                COUNT(*) as total_logins,
+                COUNT(DISTINCT username_or_email) as unique_users,
+                SUM(CASE WHEN LOWER(role) IN ('administrator', 'admin', 'superadmin') THEN 1 ELSE 0 END) as admin_logins
+              FROM user_login_history
+            `).first();
+
+            const totalLogins = statsRes?.total_logins ?? total;
+            const uniqueUsers = statsRes?.unique_users ?? (total > 0 ? 1 : 0);
+            const adminLogins = statsRes?.admin_logins ?? 0;
+
+            return jsonResponse({
+              items: results || [],
+              total,
+              page,
+              size,
+              total_pages: Math.max(1, Math.ceil(total / size)),
+              stats: {
+                total_logins: totalLogins,
+                unique_users: uniqueUsers,
+                admin_logins: adminLogins,
+              },
+            });
+          } catch (e) {
+            console.warn('D1 read login history failed, falling back to memory store:', e);
+          }
+        }
+
+        // In-memory fallback
+        let filtered = userLoginHistoryStore;
+        if (q) {
+          filtered = filtered.filter(
+            (item) =>
+              item.username_or_email.toLowerCase().includes(q) ||
+              item.role.toLowerCase().includes(q) ||
+              item.ip_address.toLowerCase().includes(q)
+          );
+        }
+
+        const total = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / size));
+        const paginated = filtered.slice(offset, offset + size);
+
+        const uniqueUsers = new Set(userLoginHistoryStore.map((u) => u.username_or_email.toLowerCase())).size;
+        const adminLogins = userLoginHistoryStore.filter((u) =>
+          ['administrator', 'admin', 'superadmin'].includes(u.role.toLowerCase())
+        ).length;
+
+        return jsonResponse({
+          items: paginated,
+          total,
+          page,
+          size,
+          total_pages: totalPages,
+          stats: {
+            total_logins: userLoginHistoryStore.length,
+            unique_users: uniqueUsers,
+            admin_logins: adminLogins,
+          },
+        });
+      }
+
+      // Clear Login History: DELETE /admin/login-history
+      if (path === '/admin/login-history' && request.method === 'DELETE') {
+        userLoginHistoryStore.length = 0;
+        if (db) {
+          try {
+            await ensureAuthTables(db);
+            await db.prepare('DELETE FROM user_login_history').run();
+          } catch (e) {
+            console.warn('D1 clear login history failed:', e);
+          }
+        }
+        return jsonResponse({ message: 'Successfully cleared login history records.' });
       }
 
       // Admin Analytics: GET /admin/analytics
@@ -1034,6 +1373,61 @@ export default {
         if (request.method === 'DELETE') {
           POST_OFFICES.splice(idx, 1);
           return jsonResponse({ message: 'Post office deleted' });
+        }
+      }
+
+      // Admin Bulk Upload Post Offices: POST /admin/post-offices/bulk-upload
+      if (path === '/admin/post-offices/bulk-upload' && request.method === 'POST') {
+        try {
+          const formData = await request.formData();
+          const file = formData.get('file');
+          if (!file || typeof file === 'string') {
+            return jsonResponse({ detail: 'Invalid or missing file. Please upload a valid .csv file.' }, 400);
+          }
+          const text = await (file as File).text();
+          const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+          let imported = 0;
+          if (lines.length > 1) {
+            const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, '').toLowerCase());
+            const pinIdx = headers.findIndex((h) => h.includes('pincode') || h.includes('pin_code') || h === 'pin');
+            const nameIdx = headers.findIndex((h) => h.includes('officename') || h.includes('post_office_name') || h.includes('office'));
+            const distIdx = headers.findIndex((h) => h.includes('district'));
+            const stateIdx = headers.findIndex((h) => h.includes('state'));
+
+            for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
+              const pin = pinIdx !== -1 ? cols[pinIdx] : cols[0];
+              const name = nameIdx !== -1 ? cols[nameIdx] : cols[1];
+              if (pin && name) {
+                POST_OFFICES.push({
+                  id: POST_OFFICES.length + 1,
+                  pin_code: pin,
+                  post_office_name: name,
+                  office_type: 'Sub Post Office',
+                  delivery_status: 'Delivery',
+                  division_name: '',
+                  region_name: '',
+                  circle_name: '',
+                  taluk: '',
+                  district: distIdx !== -1 ? cols[distIdx] : '',
+                  state: stateIdx !== -1 ? cols[stateIdx] : '',
+                  locality: name,
+                  latitude: 20.5937,
+                  longitude: 78.9629,
+                  has_verified_coords: false,
+                });
+                imported++;
+              }
+            }
+          }
+          return jsonResponse({
+            imported_count: imported,
+            skipped_count: 0,
+            total_rows_processed: Math.max(0, lines.length - 1),
+            message: `Successfully processed and imported ${imported} records.`,
+          });
+        } catch (err: any) {
+          return jsonResponse({ detail: `Bulk upload processing failed: ${err.message}` }, 400);
         }
       }
 

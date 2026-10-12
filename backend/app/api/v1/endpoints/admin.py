@@ -271,7 +271,7 @@ def get_user_login_history(
 
     from sqlalchemy import func
     unique_count = db.query(func.count(func.distinct(UserLoginHistory.username_or_email))).scalar() or 0
-    admin_count = db.query(func.count(UserLoginHistory.id)).filter(UserLoginHistory.role.in_(["superadmin", "admin"])).scalar() or 0
+    admin_count = db.query(func.count(UserLoginHistory.id)).filter(UserLoginHistory.role.in_(["superadmin", "admin", "administrator"])).scalar() or 0
 
     return {
         "items": [
