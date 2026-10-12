@@ -6,6 +6,16 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class ChangeCredentialsRequest(BaseModel):
+    current_username: Optional[str] = None
+    current_password: str
+    new_username: Optional[str] = None
+    new_password: Optional[str] = None
+
+class ChangeCredentialsResponse(BaseModel):
+    message: str
+    username: str
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

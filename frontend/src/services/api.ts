@@ -207,6 +207,18 @@ export const api = {
     })
   },
 
+  changeAdminCredentials: (data: {
+    current_username?: string
+    current_password: string
+    new_username?: string
+    new_password?: string
+  }) => {
+    return request<{ message: string; username: string }>('/admin/change-credentials', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
 
   getAdminAnalytics: () => {
     return request<AnalyticsResponse>('/admin/analytics')
@@ -236,6 +248,60 @@ export const api = {
 
   adminDeletePostOffice: (id: number) => {
     return request<{ message: string }>(`/admin/post-offices/${id}`, {
+      method: 'DELETE',
+    })
+  },
+
+  adminBulkUploadPostOffices: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return request<{
+      imported_count: number
+      skipped_count: number
+      total_rows_processed: number
+      message: string
+    }>('/admin/post-offices/bulk-upload', {
+      method: 'POST',
+      body: formData,
+    })
+  },
+
+  recordUserLogin: (usernameOrEmail: string, role: string = 'user') => {
+    return request<{ message: string }>('/auth/record-login', {
+      method: 'POST',
+      body: JSON.stringify({ username_or_email: usernameOrEmail, role }),
+    })
+  },
+
+  getAdminLoginHistory: (params: { page?: number; size?: number; query?: string }) => {
+    const searchParams = new URLSearchParams()
+    if (params.query) searchParams.set('query', params.query)
+    if (params.page) searchParams.set('page', params.page.toString())
+    if (params.size) searchParams.set('size', params.size.toString())
+    return request<{
+      items: Array<{
+        id: number
+        username_or_email: string
+        role: string
+        ip_address: string
+        user_agent: string
+        status: string
+        created_at: string
+      }>
+      total: number
+      page: number
+      size: number
+      total_pages: number
+      stats: {
+        total_logins: number
+        unique_users: number
+        admin_logins: number
+      }
+    }>(`/admin/login-history?${searchParams.toString()}`)
+  },
+
+  adminClearLoginHistory: () => {
+    return request<{ message: string }>('/admin/login-history', {
       method: 'DELETE',
     })
   },
